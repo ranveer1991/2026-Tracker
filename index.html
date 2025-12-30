@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Daily Log</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Daily Log">
+    
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        .ios-switch:checked { background-color: #34C759; }
+        .ios-switch:checked::after { transform: translateX(1rem); }
+        input[type="checkbox"] { -webkit-appearance: none; appearance: none; width: 2.5rem; height: 1.5rem; background: #E9E9EA; border-radius: 1rem; position: relative; cursor: pointer; transition: background 0.2s; }
+        input[type="checkbox"]::after { content: ''; position: absolute; top: 2px; left: 2px; width: 1.25rem; height: 1.25rem; background: white; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        input[type="checkbox"]:checked { background: #34C759; }
+        input[type="checkbox"]:checked::after { transform: translateX(1rem); }
+    </style>
+</head>
+<body class="bg-[#F2F2F7]">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+        
+        // --- CONFIGURATION ---
+        const SUPABASE_URL = https://lsctlfavvxasbkcvbjmq.supabase.co;
+        const SUPABASE_KEY = sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K;
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const cuisines = ["Italian", "Mexican", "Asian", "American", "Indian", "Mediterranean", "Health Food"];
+
+        const App = () => {
+            const [meals, setMeals] = useState({
+                Breakfast: { cuisine: '', where: 'Home', active: 'Y', healthy: 'Y', quantity: 'Controlled' },
+                Lunch: { cuisine: '', where: 'Home', active: 'Y', healthy: 'Y', quantity: 'Controlled' },
+                Dinner: { cuisine: '', where: 'Home', active: 'Y', healthy: 'Y', quantity: 'Controlled' },
+            });
+
+            const [activity, setActivity] = useState({
+                cardio: 'Cycle',
+                tennis: false,
+                intensity: 'M',
+                rehab: false,
+                stretch: false
+            });
+
+            const updateMeal = (meal, field, value) => {
+                setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
+            };
+
+            const handleSubmit = async () => {
+                const { error } = await supabase.from('daily_logs').insert([{
+                    meal_data: meals,
+                    cardio_type: activity.cardio,
+                    tennis: activity.tennis,
+                    intensity: activity.intensity,
+                    rehab: activity.rehab,
+                    stretch: activity.stretch
+                }]);
+                
+                if (error) alert("Error: " + error.message);
+                else alert("Data logged to Supabase!");
+            };
+
+            const SectionHeader = ({ title }) => (
+                <h2 className="text-[13px] font-semibold text-[#6E6E73] uppercase tracking-wider ml-4 mb-2 mt-6">
+                    {title}
+                </h2>
+            );
+
+            const MealCard = ({ name }) => (
+                <div className="bg-white rounded-[14px] mx-4 mb-4 divide-y divide-gray-100 overflow-hidden shadow-sm">
+                    <div className="p-4 flex justify-between items-center">
+                        <span className="font-semibold text-lg">{name}</span>
+                        <select 
+                            className="text-[#007AFF] bg-transparent outline-none text-right"
+                            onChange={(e) => updateMeal(name, 'cuisine', e.target.value)}
+                        >
+                            <option value="">Cuisine</option>
+                            {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                    </div>
+                    <div className="p-4 flex justify-between items-center">
+                        <span className="text-gray-700">Location</span>
+                        <div className="bg-[#EEEEF0] p-1 rounded-lg flex gap-1">
+                            {['Home', 'Out'].map(opt => (
+                                <button key={opt}
+                                    onClick={() => updateMeal(name, 'where', opt)}
+                                    className={`px-4 py-1 rounded-md text-sm transition-all ${meals[name].where === opt ? 'bg-white shadow-sm' : 'text-gray-500'}`}
+                                >{opt}</button>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="p-4 flex justify-between items-center">
+                        <span className="text-gray-700">Healthy Choice</span>
+                        <input type="checkbox" checked={meals[name].healthy === 'Y'} 
+                            onChange={(e) => updateMeal(name, 'healthy', e.target.checked ? 'Y' : 'N')} />
+                    </div>
+                    <div className="p-4 flex justify-between items-center">
+                        <span className="text-gray-700">Portion Controlled</span>
+                        <input type="checkbox" checked={meals[name].quantity === 'Controlled'} 
+                            onChange={(e) => updateMeal(name, 'quantity', e.target.checked ? 'Controlled' : 'Not')} />
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen pb-12">
+                    <div className="pt-12 px-5 pb-4">
+                        <h1 className="text-3xl font-bold">Daily Habit Tracker</h1>
+                        <p className="text-[#6E6E73]">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                    </div>
+
+                    <SectionHeader title="Meals" />
+                    <MealCard name="Breakfast" />
+                    <MealCard name="Lunch" />
+                    <MealCard name="Dinner" />
+
+                    <SectionHeader title="Activity" />
+                    <div className="bg-white rounded-[14px] mx-4 divide-y divide-gray-100 shadow-sm">
+                        <div className="p-4 flex justify-between items-center">
+                            <span>Cardio</span>
+                            <select value={activity.cardio} onChange={(e) => setActivity({...activity, cardio: e.target.value})} className="text-[#007AFF] bg-transparent">
+                                <option>Cycle</option><option>Swim</option><option>Run</option><option>None</option>
+                            </select>
+                        </div>
+                        <div className="p-4 flex justify-between items-center">
+                            <span>Tennis</span>
+                            <input type="checkbox" checked={activity.tennis} onChange={(e) => setActivity({...activity, tennis: e.target.checked})} />
+                        </div>
+                        <div className="p-4 flex justify-between items-center">
+                            <span>Intensity</span>
+                            <div className="bg-[#EEEEF0] p-1 rounded-lg flex gap-1">
+                                {['L', 'M', 'H'].map(l => (
+                                    <button key={l} onClick={() => setActivity({...activity, intensity: l})}
+                                        className={`px-4 py-1 rounded-md text-sm transition-all ${activity.intensity === l ? 'bg-white shadow-sm' : 'text-gray-500'}`}
+                                    >{l}</button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-4 flex justify-between items-center">
+                            <span>Rehab Exercises</span>
+                            <input type="checkbox" checked={activity.rehab} onChange={(e) => setActivity({...activity, rehab: e.target.checked})} />
+                        </div>
+                        <div className="p-4 flex justify-between items-center">
+                            <span>Stretch</span>
+                            <input type="checkbox" checked={activity.stretch} onChange={(e) => setActivity({...activity, stretch: e.target.checked})} />
+                        </div>
+                    </div>
+
+                    <div className="p-4 mt-6">
+                        <button 
+                            onClick={handleSubmit}
+                            className="w-full bg-[#007AFF] text-white font-semibold py-4 rounded-2xl active:opacity-70 transition-opacity"
+                        >
+                            Complete Day
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
