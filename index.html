@@ -18,7 +18,7 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-<body class="bg-gray-50">
+<body class="bg-gray-50 font-sans antialiased">
 
 <div id="root"></div>
 
@@ -40,59 +40,55 @@ const defaultMeals = {
   dinner:    { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true }
 };
 const defaultActivity = { cardio: "none", tennis: false, rehab: false, stretch: false };
-const defaultDay = { snack: false };
 
-// --- MODERN iOS-STYLE TOGGLE ---
+// "Avoided a Snack" = true means no snack (good habit) — default to true (encouraging)
+const defaultDay = { avoidedSnack: true };
+
+// --- TOGGLE COMPONENT (Compact) ---
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)} className="relative inline-flex items-center">
-    <div className={`w-14 h-8 rounded-full transition duration-300 ${value ? "bg-blue-600" : "bg-gray-300"}`}>
-      <div className={`w-7 h-7 bg-white rounded-full shadow-lg absolute top-0.5 transition duration-300 ${value ? "translate-x-6" : "translate-x-0.5"}`} />
+    <div className={`w-9 h-5 rounded-full transition duration-200 ${value ? "bg-blue-600" : "bg-gray-300"}`}>
+      <div className={`w-4 h-4 bg-white rounded-full shadow absolute top-0.5 transition duration-200 ${value ? "translate-x-4" : "translate-x-0.5"}`} />
     </div>
   </button>
 );
 
-// --- MEAL CARD (Modern Clean Design) ---
+// --- MEAL CARD (Much smaller & compact) ---
 const MealCard = ({ label, icon, data, onChange, options }) => (
-  <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 px-8 py-10 text-center">
-      <div className="text-7xl mb-4">{icon}</div>
-      <h3 className="text-3xl font-bold text-gray-800">{label}</h3>
+  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-4 text-center">
+      <div className="text-3xl mb-1">{icon}</div>
+      <h3 className="text-lg font-medium text-gray-800">{label}</h3>
     </div>
 
-    <div className="p-8 space-y-10">
-      {/* Active Choice */}
+    <div className="p-4 space-y-3">
       <div className="flex justify-between items-center">
-        <span className="text-xl font-semibold text-gray-800">Active Choice</span>
+        <span className="text-sm font-medium text-gray-700">Active Choice</span>
         <Toggle value={data.activeChoice} onChange={v => onChange("activeChoice", v)} />
       </div>
 
-      {/* Cuisine Dropdown */}
-      <div>
-        <select 
-          value={data.cuisine} 
-          onChange={e => onChange("cuisine", e.target.value)}
-          className="w-full px-6 py-4 bg-gray-100 rounded-2xl text-xl font-medium text-gray-800 focus:outline-none focus:ring-4 focus:ring-blue-300 transition"
-        >
-          {options.map(opt => <option key={opt} value={opt}>{opt || "—"}</option>)}
-        </select>
-      </div>
+      <select 
+        value={data.cuisine} 
+        onChange={e => onChange("cuisine", e.target.value)}
+        className="w-full px-3 py-2 bg-gray-100 rounded text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-300"
+      >
+        {options.map(opt => <option key={opt} value={opt}>{opt || "—"}</option>)}
+      </select>
 
-      {/* Portion Controlled */}
       <div className="flex justify-between items-center">
-        <span className="text-xl font-semibold text-gray-800">Portion Controlled</span>
+        <span className="text-sm font-medium text-gray-700">Portion Controlled</span>
         <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
       </div>
 
-      {/* Avoided Dessert */}
       <div className="flex justify-between items-center">
-        <span className="text-xl font-semibold text-gray-800">Avoided Dessert</span>
+        <span className="text-sm font-medium text-gray-700">Avoided Dessert</span>
         <Toggle value={data.avoidedDessert} onChange={v => onChange("avoidedDessert", v)} />
       </div>
     </div>
   </div>
 );
 
-// --- WELCOME PAGE ---
+// --- WELCOME PAGE (Smaller) ---
 const WelcomePage = ({ logs, setPage }) => {
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
@@ -113,28 +109,26 @@ const WelcomePage = ({ logs, setPage }) => {
   return (
     <button 
       onClick={() => setPage('log')} 
-      className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50"
+      className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 focus:outline-none"
     >
-      <div className="text-center px-10">
-        <h1 className="text-5xl font-extrabold text-gray-900 mb-16">Daily Habit Tracker</h1>
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl p-16">
-          <h3 className="text-3xl font-bold text-gray-700 mb-8">Current Streak</h3>
-          <div className="text-9xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-6">
-            {streak}
-          </div>
-          <div className="text-3xl font-medium text-gray-600">days in a row 🔥</div>
+      <div className="text-center px-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Daily Habit Tracker</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 max-w-xs mx-auto">
+          <h3 className="text-lg font-medium text-gray-700 mb-3">Current Streak</h3>
+          <div className="text-5xl font-bold text-blue-600 mb-1">{streak}</div>
+          <div className="text-base text-gray-600">days in a row 🔥</div>
         </div>
-        <p className="text-2xl text-gray-700 mt-16">Tap anywhere to log today</p>
+        <p className="text-base text-gray-600 mt-8">Tap to log today</p>
       </div>
     </button>
   );
 };
 
-// --- LOG PAGE ---
+// --- LOG PAGE (Considerably smaller) ---
 const LogPage = ({ logs, setPage, refetchLogs }) => {
   const [meals, setMeals] = useState(defaultMeals);
   const [activity, setActivity] = useState(defaultActivity);
-  const [snack, setSnack] = useState(false);
+  const [avoidedSnack, setAvoidedSnack] = useState(true);
 
   const today = new Date().toISOString().split("T")[0];
   const todayLog = logs.find(l => l.log_date === today);
@@ -143,11 +137,11 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
     if (todayLog) {
       setMeals(todayLog.meals || defaultMeals);
       setActivity(todayLog.activity || defaultActivity);
-      setSnack(todayLog.snack || false);
+      setAvoidedSnack(todayLog.avoidedSnack ?? true);
     } else {
       setMeals(defaultMeals);
       setActivity(defaultActivity);
-      setSnack(false);
+      setAvoidedSnack(true);
     }
   }, [todayLog]);
 
@@ -155,11 +149,11 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
     setMeals(prev => ({...prev, [meal]: {...prev[meal], [field]: value}}));
   };
 
-  const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || !m.avoidedDessert || m.portion) ||
-                  activity.cardio !== "none" || activity.tennis || activity.rehab || activity.stretch || snack;
+  const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || m.portion || !m.avoidedDessert) ||
+                  activity.cardio !== "none" || activity.tennis || activity.rehab || activity.stretch || !avoidedSnack;
 
   const handleSubmit = async () => {
-    const payload = { user_id: "me", log_date: today, meals, activity, snack };
+    const payload = { user_id: "me", log_date: today, meals, activity, avoidedSnack };
     const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
     if (error) alert("Error: " + error.message);
     else {
@@ -169,47 +163,45 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
     }
   };
 
-  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const dateStr = new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-32">
-      <div className="px-8 pt-16 pb-10 text-center">
-        <h1 className="text-5xl font-extrabold text-gray-900">Today</h1>
-        <p className="text-2xl text-gray-600 mt-3">{dateStr}</p>
+    <div className="min-h-screen pb-24">
+      <div className="px-5 pt-8 pb-4 text-center">
+        <h1 className="text-2xl font-bold text-gray-900">Today</h1>
+        <p className="text-base text-gray-600 mt-1">{dateStr}</p>
       </div>
 
-      <div className="px-6">
-        <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Meals</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
+      <div className="px-5">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Meals</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v) => updateMeal("breakfast",f,v)} options={breakfastOptions} />
           <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v) => updateMeal("lunch",f,v)} options={lunchDinnerOptions} />
           <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v) => updateMeal("dinner",f,v)} options={lunchDinnerOptions} />
         </div>
 
-        {/* Snack */}
-        <div className="bg-white rounded-3xl shadow-lg p-8 mb-16">
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
           <div className="flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <div className="text-6xl">🍿</div>
-              <h3 className="text-3xl font-bold text-gray-800">Had a Snack Today?</h3>
+            <div className="flex items-center gap-3">
+              <div className="text-3xl">🍿</div>
+              <h3 className="text-base font-medium text-gray-800">Avoided a Snack</h3>
             </div>
-            <Toggle value={snack} onChange={setSnack} />
+            <Toggle value={avoidedSnack} onChange={setAvoidedSnack} />
           </div>
         </div>
 
-        {/* Activity */}
-        <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Activity</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-5xl mx-auto">
-          <div className="bg-white rounded-3xl shadow-lg p-10 space-y-12">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Activity</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-6">
-                <div className="text-5xl">🏃</div>
-                <span className="text-2xl font-semibold">Cardio</span>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🏃</div>
+                <span className="text-base font-medium">Cardio</span>
               </div>
               <select 
                 value={activity.cardio} 
                 onChange={e=>setActivity({...activity,cardio:e.target.value})}
-                className="px-6 py-4 bg-gray-100 rounded-2xl text-xl font-medium focus:ring-4 focus:ring-blue-300"
+                className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300"
               >
                 <option>None</option>
                 <option>Run</option>
@@ -218,26 +210,26 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
               </select>
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-6">
-                <div className="text-5xl">🎾</div>
-                <span className="text-2xl font-semibold">Tennis</span>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🎾</div>
+                <span className="text-base font-medium">Tennis</span>
               </div>
               <Toggle value={activity.tennis} onChange={v=>setActivity({...activity,tennis:v})} />
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-lg p-10 space-y-12">
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-6">
-                <div className="text-5xl">🏥</div>
-                <span className="text-2xl font-semibold">Rehab</span>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🏥</div>
+                <span className="text-base font-medium">Rehab</span>
               </div>
               <Toggle value={activity.rehab} onChange={v=>setActivity({...activity,rehab:v})} />
             </div>
             <div className="flex justify-between items-center">
-              <div className="flex items-center gap-6">
-                <div className="text-5xl">🧘</div>
-                <span className="text-2xl font-semibold">Stretch</span>
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🧘</div>
+                <span className="text-base font-medium">Stretch</span>
               </div>
               <Toggle value={activity.stretch} onChange={v=>setActivity({...activity,stretch:v})} />
             </div>
@@ -245,16 +237,11 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
         </div>
       </div>
 
-      {/* Submit Button */}
-      <div className="fixed bottom-8 left-6 right-6">
+      <div className="fixed bottom-4 left-4 right-4">
         <button 
           disabled={!hasData} 
           onClick={handleSubmit}
-          className={`w-full py-6 rounded-3xl font-bold text-2xl shadow-2xl transition transform active:scale-95 ${
-            hasData 
-              ? "bg-gradient-to-r from-blue-600 to-indigo-700 text-white" 
-              : "bg-gray-300 text-gray-500"
-          }`}
+          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-500"}`}
         >
           Complete Day
         </button>
@@ -263,10 +250,121 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   );
 };
 
-// --- STATS PAGE (include your previous version here) ---
-// For brevity, assuming you have it — add the Eating Out vs Home card as before
+// --- STATS PAGE (Updated for "Avoided Snack") ---
+const StatsPage = ({ logs, setPage }) => {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-// --- APP ---
+  const last30Days = logs.filter(log => new Date(log.log_date) >= thirtyDaysAgo);
+
+  const mealsArray = last30Days.flatMap(log =>
+    ["breakfast", "lunch", "dinner"].map(meal => ({...log.meals[meal], meal}))
+  ).filter(m => m.cuisine);
+
+  const activeChoiceCount = mealsArray.filter(m => m.activeChoice).length;
+  const portionCount = mealsArray.filter(m => m.portion).length;
+  const avoidedDessertCount = mealsArray.filter(m => m.avoidedDessert).length;
+  const avoidedSnackCount = last30Days.filter(log => log.avoidedSnack).length;
+  const totalMeals = mealsArray.length;
+  const totalDays = last30Days.length;
+
+  const cuisineCount = mealsArray.reduce((acc, m) => {
+    if (m.cuisine) acc[m.cuisine] = (acc[m.cuisine] || 0) + 1;
+    return acc;
+  }, {});
+
+  const sortedCuisines = Object.entries(cuisineCount).sort((a,b) => b[1] - a[1]).slice(0,5);
+
+  const activeChoicePct = totalMeals ? Math.round((activeChoiceCount / totalMeals) * 100) : 0;
+  const portionPct = totalMeals ? Math.round((portionCount / totalMeals) * 100) : 0;
+  const avoidedDessertPct = totalMeals ? Math.round((avoidedDessertCount / totalMeals) * 100) : 0;
+  const avoidedSnackPct = totalDays ? Math.round((avoidedSnackCount / totalDays) * 100) : 0;
+
+  const getNudge = (pct) => {
+    if (pct >= 90) return { message: "Outstanding consistency!", color: "text-green-600" };
+    if (pct >= 70) return { message: "Strong progress – keep it up!", color: "text-blue-600" };
+    return { message: "You can do better. One small win tomorrow.", color: "text-orange-600" };
+  };
+
+  return (
+    <div className="min-h-screen pb-24">
+      <div className="px-5 pt-8 pb-4 flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Your Stats</h1>
+        <button onClick={() => setPage('log')} className="text-blue-600 text-base font-medium">← Today</button>
+      </div>
+
+      <div className="px-5 space-y-5">
+        <div className="bg-white rounded-xl shadow-sm p-5 text-center">
+          <h3 className="text-base font-medium text-gray-700 mb-2">Logging Streak</h3>
+          <div className="text-4xl font-bold text-blue-600">{totalDays}</div>
+          <p className="text-sm text-gray-600 mt-1">days in last 30</p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h3 className="text-base font-medium text-gray-800 mb-3">Active Choices</h3>
+          <div className="text-3xl font-bold text-blue-600">{activeChoiceCount}/{totalMeals}</div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-blue-600 h-2 rounded-full transition" style={{width: `${activeChoicePct}%`}} />
+          </div>
+          <p className={`text-sm font-medium mt-3 ${getNudge(activeChoicePct).color}`}>
+            {getNudge(activeChoicePct).message}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h3 className="text-base font-medium text-gray-800 mb-3">Portion Controlled</h3>
+          <div className="text-3xl font-bold text-green-600">{portionCount}/{totalMeals}</div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-green-600 h-2 rounded-full" style={{width: `${portionPct}%`}} />
+          </div>
+          <p className={`text-sm font-medium mt-3 ${getNudge(portionPct).color}`}>
+            {getNudge(portionPct).message}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h3 className="text-base font-medium text-gray-800 mb-3">Avoided Dessert</h3>
+          <div className="text-3xl font-bold text-purple-600">{avoidedDessertCount}/{totalMeals}</div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-purple-600 h-2 rounded-full" style={{width: `${avoidedDessertPct}%`}} />
+          </div>
+          <p className={`text-sm font-medium mt-3 ${getNudge(avoidedDessertPct).color}`}>
+            {getNudge(avoidedDessertPct).message}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h3 className="text-base font-medium text-gray-800 mb-3">Avoided Snack</h3>
+          <div className="text-3xl font-bold text-orange-600">{avoidedSnackCount}/{totalDays}</div>
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div className="bg-orange-600 h-2 rounded-full" style={{width: `${avoidedSnackPct}%`}} />
+          </div>
+          <p className={`text-sm font-medium mt-3 ${getNudge(avoidedSnackPct).color}`}>
+            {getNudge(avoidedSnackPct).message}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <h3 className="text-base font-medium text-gray-800 mb-3">Top Cuisines</h3>
+          {sortedCuisines.length === 0 ? (
+            <p className="text-sm text-gray-500">No data yet</p>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {sortedCuisines.map(([cuisine, count]) => (
+                <div key={cuisine} className="flex justify-between">
+                  <span className="text-gray-800">{cuisine}</span>
+                  <span className="text-gray-600">{count}x</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN APP ---
 const App = () => {
   const [page, setPage] = useState('welcome');
   const [logs, setLogs] = useState([]);
@@ -274,20 +372,31 @@ const App = () => {
 
   const fetchLogs = async () => {
     setLoading(true);
-    const { data } = await supabase.from("daily_logs").select("*").eq("user_id", "me").order("log_date", { ascending: false });
-    setLogs(data || []);
+    const { data, error } = await supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("user_id", "me")
+      .order("log_date", { ascending: false });
+
+    if (!error && data) {
+      setLogs(data);
+    }
     setLoading(false);
   };
 
-  useEffect(() => { fetchLogs(); }, []);
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-3xl font-medium">Loading...</div>;
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen text-base">Loading...</div>;
+  }
 
   return (
     <>
       {page === 'welcome' && <WelcomePage logs={logs} setPage={setPage} />}
       {page === 'log' && <LogPage logs={logs} setPage={setPage} refetchLogs={fetchLogs} />}
-      {/* {page === 'stats' && <StatsPage logs={logs} setPage={setPage} />} */}
+      {page === 'stats' && <StatsPage logs={logs} setPage={setPage} />}
     </>
   );
 };
