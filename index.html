@@ -1,156 +1,192 @@
-<script type="text/babel">
-    const { useState, useEffect } = React;
-    
-    // --- CONFIGURATION ---
-    const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
-    
-    // Initialize inside a try-catch to prevent total page failure
-    let supabaseClient;
-    try {
-        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    } catch (e) {
-        console.error("Supabase failed to load:", e);
-    }
+const { useState } = React;
 
-    const cuisines = ["Italian", "Mexican", "Asian", "American", "Indian", "Mediterranean", "Health Food", "Others"];
+const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
 
-    const App = () => {
-        // Edit 2: Radio/Checkboxes off by default (null/empty)
-        const [meals, setMeals] = useState({
-            Breakfast: { cuisine: '', where: '', healthy: null, quantity: null },
-            Lunch: { cuisine: '', where: '', healthy: null, quantity: null },
-            Dinner: { cuisine: '', where: '', healthy: null, quantity: null },
-        });
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        const [activity, setActivity] = useState({
-            cardio: 'None',
-            tennis: false,
-            intensity: 'M',
-            rehab: false,
-            stretch: false
-        });
+const cuisines = ["italian","mexican","asian","american","indian","mediterranean","healthy","other"];
 
-        const updateMeal = (meal, field, value) => {
-            setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
-        };
+const defaultMeals = {
+  breakfast: { cuisine: "", where: "home", healthy: false, portion: false },
+  lunch:     { cuisine: "", where: "home", healthy: false, portion: false },
+  dinner:    { cuisine: "", where: "home", healthy: false, portion: false }
+};
 
-        const handleSubmit = async () => {
-            if (!supabaseClient) return alert("Database not connected");
-            
-            const { error } = await supabaseClient.from('daily_logs').insert([{
-                meal_data: meals,
-                cardio_type: activity.cardio,
-                tennis: activity.tennis,
-                intensity: activity.intensity,
-                rehab: activity.rehab,
-                stretch: activity.stretch
-            }]);
-            
-            if (error) alert("Error: " + error.message);
-            else alert("✅ Data logged successfully!");
-        };
+const defaultActivity = {
+  cardio: "none",
+  tennis: false,
+  intensity: "M",
+  rehab: false,
+  stretch: false
+};
 
-        const SectionHeader = ({ title }) => (
-            <h2 className="text-[13px] font-semibold text-[#6E6E73] uppercase tracking-wider ml-4 mb-2 mt-6">
-                {title}
-            </h2>
-        );
+const Toggle = ({ value, onChange }) => (
+  <button
+    onClick={() => onChange(!value)}
+    className={`w-12 h-7 rounded-full transition ${value ? "bg-green-500" : "bg-gray-300"}`}
+  >
+    <span
+      className={`block w-5 h-5 bg-white rounded-full transform transition ${
+        value ? "translate-x-6" : "translate-x-1"
+      }`}
+    />
+  </button>
+);
 
-        const MealCard = ({ name }) => (
-            // Edit 1: Fixed heights (h-[56px]) prevent layout jumping
-            <div className="bg-white rounded-[14px] mx-4 mb-4 divide-y divide-gray-100 overflow-hidden shadow-sm">
-                <div className="p-4 flex justify-between items-center h-[56px]">
-                    <span className="font-semibold text-lg">{name}</span>
-                    <select 
-                        className="text-[#007AFF] bg-transparent outline-none text-right"
-                        value={meals[name].cuisine}
-                        onChange={(e) => updateMeal(name, 'cuisine', e.target.value)}
-                    >
-                        <option value="">Cuisine</option>
-                        {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                </div>
-                <div className="p-4 flex justify-between items-center h-[56px]">
-                    <span className="text-gray-700">Location</span>
-                    <div className="bg-[#EEEEF0] p-1 rounded-lg flex gap-1">
-                        {['Home', 'Out'].map(opt => (
-                            <button key={opt}
-                                onClick={() => updateMeal(name, 'where', opt)}
-                                className={`px-4 py-1 rounded-md text-sm transition-all ${meals[name].where === opt ? 'bg-white shadow-sm font-medium' : 'text-gray-500'}`}
-                            >{opt}</button>
-                        ))}
-                    </div>
-                </div>
-                <div className="p-4 flex justify-between items-center h-[56px]">
-                    <span className="text-gray-700">Healthy Choice</span>
-                    <input type="checkbox" checked={meals[name].healthy === 'Y'} 
-                        onChange={(e) => updateMeal(name, 'healthy', e.target.checked ? 'Y' : 'N')} />
-                </div>
-                <div className="p-4 flex justify-between items-center h-[56px]">
-                    <span className="text-gray-700">Portion Controlled</span>
-                    <input type="checkbox" checked={meals[name].quantity === 'Controlled'} 
-                        onChange={(e) => updateMeal(name, 'quantity', e.target.checked ? 'Controlled' : 'Not')} />
-                </div>
+const MealCard = ({ label, icon, data, onChange }) => {
+  const [open, setOpen] = useState(false);
+
+  const summary = [
+    data.cuisine,
+    data.where,
+    data.healthy && "🥗",
+    data.portion && "⚖️"
+  ].filter(Boolean).join(" · ");
+
+  return (
+    <div className="bg-white mx-4 mb-4 rounded-2xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 flex justify-between items-center"
+      >
+        <span className="font-semibold text-lg flex items-center gap-2">
+          {icon} {label}
+        </span>
+        <span className="text-sm text-gray-500">
+          {summary || "Tap to log"}
+        </span>
+      </button>
+
+      {open && (
+        <div className="divide-y">
+          <div className="p-4 flex justify-between">
+            <span>Cuisine</span>
+            <select
+              className="text-[#007AFF]"
+              value={data.cuisine}
+              onChange={e => onChange("cuisine", e.target.value)}
+            >
+              <option value="">Select</option>
+              {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="p-4 flex justify-between">
+            <span>Where</span>
+            <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
+              {["home","out"].map(w => (
+                <button
+                  key={w}
+                  onClick={() => onChange("where", w)}
+                  className={`px-4 py-1 rounded-md ${
+                    data.where === w ? "bg-white shadow" : "text-gray-500"
+                  }`}
+                >
+                  {w}
+                </button>
+              ))}
             </div>
-        );
+          </div>
 
-        return (
-            <div className="max-w-md mx-auto min-h-screen pb-12 safe-top">
-                <div className="pt-8 px-5 pb-4">
-                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Habit Tracker</h1>
-                    <p className="text-[#6E6E73]">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
-                </div>
+          <div className="p-4 flex justify-between">
+            <span>Healthy Choice</span>
+            <Toggle value={data.healthy} onChange={v => onChange("healthy", v)} />
+          </div>
 
-                <SectionHeader title="Meals" />
-                <MealCard name="Breakfast" />
-                <MealCard name="Lunch" />
-                <MealCard name="Dinner" />
+          <div className="p-4 flex justify-between">
+            <span>Portion Controlled</span>
+            <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-                <SectionHeader title="Activity" />
-                <div className="bg-white rounded-[14px] mx-4 divide-y divide-gray-100 shadow-sm">
-                    <div className="p-4 flex justify-between items-center h-[56px]">
-                        <span>Cardio</span>
-                        <select value={activity.cardio} onChange={(e) => setActivity({...activity, cardio: e.target.value})} className="text-[#007AFF] bg-transparent">
-                            <option>None</option><option>Cycle</option><option>Swim</option><option>Run</option>
-                        </select>
-                    </div>
-                    <div className="p-4 flex justify-between items-center h-[56px]">
-                        <span>Tennis</span>
-                        <input type="checkbox" checked={activity.tennis} onChange={(e) => setActivity({...activity, tennis: e.target.checked})} />
-                    </div>
-                    <div className="p-4 flex justify-between items-center h-[56px]">
-                        <span>Intensity</span>
-                        <div className="bg-[#EEEEF0] p-1 rounded-lg flex gap-1">
-                            {['L', 'M', 'H'].map(l => (
-                                <button key={l} onClick={() => setActivity({...activity, intensity: l})}
-                                    className={`px-4 py-1 rounded-md text-sm transition-all ${activity.intensity === l ? 'bg-white shadow-sm' : 'text-gray-500'}`}
-                                >{l}</button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="p-4 flex justify-between items-center h-[56px]">
-                        <span>Rehab Exercises</span>
-                        <input type="checkbox" checked={activity.rehab} onChange={(e) => setActivity({...activity, rehab: e.target.checked})} />
-                    </div>
-                    <div className="p-4 flex justify-between items-center h-[56px]">
-                        <span>Stretch</span>
-                        <input type="checkbox" checked={activity.stretch} onChange={(e) => setActivity({...activity, stretch: e.target.checked})} />
-                    </div>
-                </div>
+const App = () => {
+  const [meals, setMeals] = useState(defaultMeals);
+  const [activity, setActivity] = useState(defaultActivity);
 
-                <div className="p-4 mt-6">
-                    <button 
-                        onClick={handleSubmit}
-                        className="w-full bg-[#007AFF] text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-all"
-                    >
-                        Complete Day
-                    </button>
-                </div>
-            </div>
-        );
+  const updateMeal = (meal, field, value) => {
+    setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
+  };
+
+  const hasData =
+    Object.values(meals).some(m => m.cuisine || m.healthy || m.portion) ||
+    activity.cardio !== "none" ||
+    activity.tennis;
+
+  const handleSubmit = async () => {
+    const user = (await supabaseClient.auth.getUser()).data.user;
+    if (!user) return alert("Not logged in");
+
+    const payload = {
+      user_id: user.id,
+      log_date: new Date().toISOString().split("T")[0],
+      meals,
+      activity
     };
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
-</script>
+    const { error } = await supabaseClient
+      .from("daily_logs")
+      .upsert(payload, { onConflict: "user_id,log_date" });
+
+    if (error) alert(error.message);
+    else alert("✅ Day logged!");
+  };
+
+  return (
+    <div className="max-w-md mx-auto pb-16">
+      <div className="px-5 pt-8 pb-4">
+        <h1 className="text-3xl font-bold">Daily Habit Tracker</h1>
+        <p className="text-gray-500">
+          {new Date().toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" })}
+        </p>
+      </div>
+
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">Meals</h2>
+      <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
+      <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
+      <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
+
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">Activity</h2>
+      <div className="bg-white mx-4 rounded-2xl divide-y shadow-sm">
+        <div className="p-4 flex justify-between">
+          <span>Cardio</span>
+          <select
+            className="text-[#007AFF]"
+            value={activity.cardio}
+            onChange={e => setActivity({...activity, cardio:e.target.value})}
+          >
+            <option value="none">None</option>
+            <option value="run">Run</option>
+            <option value="cycle">Cycle</option>
+            <option value="swim">Swim</option>
+          </select>
+        </div>
+
+        {["tennis","rehab","stretch"].map(k => (
+          <div key={k} className="p-4 flex justify-between">
+            <span>{k.charAt(0).toUpperCase()+k.slice(1)}</span>
+            <Toggle value={activity[k]} onChange={v => setActivity({...activity, [k]:v})} />
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 mt-6">
+        <button
+          disabled={!hasData}
+          onClick={handleSubmit}
+          className={`w-full py-4 rounded-2xl font-semibold transition ${
+            hasData ? "bg-[#007AFF] text-white" : "bg-gray-300 text-gray-500"
+          }`}
+        >
+          Complete Day
+        </button>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
