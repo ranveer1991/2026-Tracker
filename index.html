@@ -17,13 +17,16 @@
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Chart.js v3 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 
 <div id="root"></div>
 
 <script type="text/babel">
-const { useState, useEffect } = React;
+const { useState, useEffect, useRef } = React;
 
 // --- SUPABASE ---
 const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
@@ -39,12 +42,17 @@ const defaultMeals = {
   lunch:     { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true },
   dinner:    { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true }
 };
-const defaultActivity = { cardio: "none", tennis: false, rehab: false, stretch: false };
-
-// "Avoided a Snack" = true means no snack (good habit) — default to true (encouraging)
+const defaultActivity = { 
+  cardio: "none", 
+  tennis: false, 
+  strengthHome: false,
+  strengthGym: false,
+  rehab: false,
+  mobility: false
+};
 const defaultDay = { avoidedSnack: true };
 
-// --- TOGGLE COMPONENT (Compact) ---
+// --- TOGGLE COMPONENT ---
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)} className="relative inline-flex items-center">
     <div className={`w-9 h-5 rounded-full transition duration-200 ${value ? "bg-blue-600" : "bg-gray-300"}`}>
@@ -53,7 +61,7 @@ const Toggle = ({ value, onChange }) => (
   </button>
 );
 
-// --- MEAL CARD (Much smaller & compact) ---
+// --- MEAL CARD ---
 const MealCard = ({ label, icon, data, onChange, options }) => (
   <div className="bg-white rounded-xl shadow-sm overflow-hidden">
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-4 text-center">
@@ -88,7 +96,7 @@ const MealCard = ({ label, icon, data, onChange, options }) => (
   </div>
 );
 
-// --- WELCOME PAGE (Smaller) ---
+// --- WELCOME PAGE ---
 const WelcomePage = ({ logs, setPage }) => {
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
@@ -124,7 +132,7 @@ const WelcomePage = ({ logs, setPage }) => {
   );
 };
 
-// --- LOG PAGE (Considerably smaller) ---
+// --- LOG PAGE ---
 const LogPage = ({ logs, setPage, refetchLogs }) => {
   const [meals, setMeals] = useState(defaultMeals);
   const [activity, setActivity] = useState(defaultActivity);
@@ -150,7 +158,8 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   };
 
   const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || m.portion || !m.avoidedDessert) ||
-                  activity.cardio !== "none" || activity.tennis || activity.rehab || activity.stretch || !avoidedSnack;
+                  activity.cardio !== "none" || activity.tennis || activity.strengthHome || activity.strengthGym ||
+                  activity.rehab || activity.mobility || !avoidedSnack;
 
   const handleSubmit = async () => {
     const payload = { user_id: "me", log_date: today, meals, activity, avoidedSnack };
@@ -191,18 +200,15 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
         </div>
 
         <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Activity</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">🏃</div>
                 <span className="text-base font-medium">Cardio</span>
               </div>
-              <select 
-                value={activity.cardio} 
-                onChange={e=>setActivity({...activity,cardio:e.target.value})}
-                className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300"
-              >
+              <select value={activity.cardio} onChange={e=>setActivity({...activity,cardio:e.target.value})}
+                className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300">
                 <option>None</option>
                 <option>Run</option>
                 <option>Cycle</option>
@@ -221,28 +227,42 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="text-3xl">🏥</div>
+                <div className="text-3xl">🏋️</div>
+                <span className="text-base font-medium">Strength (Home)</span>
+              </div>
+              <Toggle value={activity.strengthHome} onChange={v=>setActivity({...activity,strengthHome:v})} />
+            </div>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">💪</div>
+                <span className="text-base font-medium">Strength (Gym)</span>
+              </div>
+              <Toggle value={activity.strengthGym} onChange={v=>setActivity({...activity,strengthGym:v})} />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">🩹</div>
                 <span className="text-base font-medium">Rehab</span>
               </div>
               <Toggle value={activity.rehab} onChange={v=>setActivity({...activity,rehab:v})} />
             </div>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <div className="text-3xl">🧘</div>
-                <span className="text-base font-medium">Stretch</span>
+                <div className="text-3xl">🤸</div>
+                <span className="text-base font-medium">Mobility Routine</span>
               </div>
-              <Toggle value={activity.stretch} onChange={v=>setActivity({...activity,stretch:v})} />
+              <Toggle value={activity.mobility} onChange={v=>setActivity({...activity,mobility:v})} />
             </div>
           </div>
         </div>
       </div>
 
       <div className="fixed bottom-4 left-4 right-4">
-        <button 
-          disabled={!hasData} 
-          onClick={handleSubmit}
-          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-500"}`}
-        >
+        <button disabled={!hasData} onClick={handleSubmit}
+          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-500"}`}>
           Complete Day
         </button>
       </div>
@@ -250,114 +270,224 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   );
 };
 
-// --- STATS PAGE (Updated for "Avoided Snack") ---
+// --- STATS PAGE FIXED ---
 const StatsPage = ({ logs, setPage }) => {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const [selectedPoint, setSelectedPoint] = useState(null);
 
-  const last30Days = logs.filter(log => new Date(log.log_date) >= thirtyDaysAgo);
+  const lineCanvasRef = useRef(null);
+  const breakfastRef = useRef(null);
+  const lunchRef = useRef(null);
+  const dinnerRef = useRef(null);
 
-  const mealsArray = last30Days.flatMap(log =>
-    ["breakfast", "lunch", "dinner"].map(meal => ({...log.meals[meal], meal}))
-  ).filter(m => m.cuisine);
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
 
-  const activeChoiceCount = mealsArray.filter(m => m.activeChoice).length;
-  const portionCount = mealsArray.filter(m => m.portion).length;
-  const avoidedDessertCount = mealsArray.filter(m => m.avoidedDessert).length;
-  const avoidedSnackCount = last30Days.filter(log => log.avoidedSnack).length;
-  const totalMeals = mealsArray.length;
-  const totalDays = last30Days.length;
+  const last30Logs = logs
+    .filter(log => new Date(log.log_date) >= thirtyDaysAgo)
+    .sort((a, b) => a.log_date.localeCompare(b.log_date));
 
-  const cuisineCount = mealsArray.reduce((acc, m) => {
-    if (m.cuisine) acc[m.cuisine] = (acc[m.cuisine] || 0) + 1;
-    return acc;
-  }, {});
+  const dates = [];
+  let current = new Date(thirtyDaysAgo);
+  while (current <= today) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
 
-  const sortedCuisines = Object.entries(cuisineCount).sort((a,b) => b[1] - a[1]).slice(0,5);
-
-  const activeChoicePct = totalMeals ? Math.round((activeChoiceCount / totalMeals) * 100) : 0;
-  const portionPct = totalMeals ? Math.round((portionCount / totalMeals) * 100) : 0;
-  const avoidedDessertPct = totalMeals ? Math.round((avoidedDessertCount / totalMeals) * 100) : 0;
-  const avoidedSnackPct = totalDays ? Math.round((avoidedSnackCount / totalDays) * 100) : 0;
-
-  const getNudge = (pct) => {
-    if (pct >= 90) return { message: "Outstanding consistency!", color: "text-green-600" };
-    if (pct >= 70) return { message: "Strong progress – keep it up!", color: "text-blue-600" };
-    return { message: "You can do better. One small win tomorrow.", color: "text-orange-600" };
+  const getCount = (date, field) => {
+    const log = last30Logs.find(l => l.log_date === date);
+    if (!log) return 0;
+    return ['breakfast', 'lunch', 'dinner'].reduce((sum, meal) => sum + (log.meals[meal][field] ? 1 : 0), 0);
   };
+
+  const activeChoiceData = dates.map(d => getCount(d, 'activeChoice'));
+  const portionData = dates.map(d => getCount(d, 'portion'));
+  const avoidedDessertData = dates.map(d => getCount(d, 'avoidedDessert'));
+
+  // Streaks
+  const calculateStreak = (conditionFn) => {
+    let streak = 0;
+    for (let i = last30Logs.length - 1; i >= 0; i--) {
+      if (conditionFn(last30Logs[i])) streak++;
+      else break;
+    }
+    return streak;
+  };
+
+  const loggingStreak = last30Logs.length;
+  const mobilityStreak = calculateStreak(log => log.activity?.mobility);
+  const noDessertStreak = calculateStreak(log => 
+    log.meals.breakfast.avoidedDessert && 
+    log.meals.lunch.avoidedDessert && 
+    log.meals.dinner.avoidedDessert
+  );
+  const noSnackStreak = calculateStreak(log => log.avoidedSnack);
+
+  // Activity totals
+  const cardioSessions = last30Logs.filter(log => log.activity?.cardio !== "none").length;
+  const tennisSessions = last30Logs.filter(log => log.activity?.tennis).length;
+  const strengthSessions = last30Logs.filter(log => log.activity?.strengthHome || log.activity?.strengthGym).length;
+
+  // Line Chart
+  useEffect(() => {
+    if (!lineCanvasRef.current) return;
+    const ctx = lineCanvasRef.current.getContext('2d');
+    let chart = lineCanvasRef.current.chartInstance;
+    if (chart) chart.destroy();
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: dates.map(d => new Date(d).getDate()),
+        datasets: [
+          { label: 'Active Choices', data: activeChoiceData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Portion Controlled', data: portionData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Avoided Dessert', data: avoidedDessertData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.3, pointRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { min: 0, max: 3, ticks: { stepSize: 1 } } },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const date = dates[index];
+            const day = new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+            setSelectedPoint({ date: day, active: activeChoiceData[index], portion: portionData[index], dessert: avoidedDessertData[index] });
+          }
+        }
+      }
+    });
+    lineCanvasRef.current.chartInstance = chart;
+  }, [last30Logs]);
+
+  // Stacked Charts
+  const createStackedChart = (meal, ref) => {
+    useEffect(() => {
+      if (!ref.current) return;
+      const ctx = ref.current.getContext('2d');
+      let chart = ref.current.chartInstance;
+      if (chart) chart.destroy();
+
+      const cuisineCounts = {};
+      last30Logs.forEach(log => {
+        const cuisine = log.meals[meal].cuisine || "None";
+        cuisineCounts[cuisine] = (cuisineCounts[cuisine] || 0) + 1;
+      });
+      const topCuisines = Object.keys(cuisineCounts).sort((a,b) => cuisineCounts[b] - cuisineCounts[a]).slice(0, 6);
+      const colors = topCuisines.map((_, i) => `hsl(${i * 60}, 70%, 60%)`);
+
+      const data = {
+        labels: dates.map(d => new Date(d).getDate()),
+        datasets: topCuisines.map((c, i) => ({
+          label: c,
+          data: dates.map(date => {
+            const log = last30Logs.find(l => l.log_date === date);
+            return log && log.meals[meal].cuisine === c ? 1 : 0;
+          }),
+          backgroundColor: colors[i]
+        }))
+      };
+
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } },
+          scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: 1, ticks: { stepSize: 1 } } }
+        }
+      });
+      ref.current.chartInstance = chart;
+    }, [last30Logs]);
+  };
+
+  useEffect(() => {
+    createStackedChart('breakfast', breakfastRef);
+    createStackedChart('lunch', lunchRef);
+    createStackedChart('dinner', dinnerRef);
+  }, [last30Logs]);
 
   return (
     <div className="min-h-screen pb-24">
-      <div className="px-5 pt-8 pb-4 flex justify-between items-center">
+      <div className="px-5 pt-8 pb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Your Stats</h1>
         <button onClick={() => setPage('log')} className="text-blue-600 text-base font-medium">← Today</button>
       </div>
 
-      <div className="px-5 space-y-5">
-        <div className="bg-white rounded-xl shadow-sm p-5 text-center">
-          <h3 className="text-base font-medium text-gray-700 mb-2">Logging Streak</h3>
-          <div className="text-4xl font-bold text-blue-600">{totalDays}</div>
-          <p className="text-sm text-gray-600 mt-1">days in last 30</p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-base font-medium text-gray-800 mb-3">Active Choices</h3>
-          <div className="text-3xl font-bold text-blue-600">{activeChoiceCount}/{totalMeals}</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-blue-600 h-2 rounded-full transition" style={{width: `${activeChoicePct}%`}} />
+      <div className="px-5 space-y-8">
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-5">Overall Streaks</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-blue-600">{loggingStreak}</div>
+              <p className="text-sm text-gray-600 mt-1">Logging</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-teal-600">{mobilityStreak}</div>
+              <p className="text-sm text-gray-600 mt-1">Mobility</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-purple-600">{noDessertStreak}</div>
+              <p className="text-sm text-gray-600 mt-1">No Dessert</p>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-orange-600">{noSnackStreak}</div>
+              <p className="text-sm text-gray-600 mt-1">No Snack</p>
+            </div>
           </div>
-          <p className={`text-sm font-medium mt-3 ${getNudge(activeChoicePct).color}`}>
-            {getNudge(activeChoicePct).message}
-          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-base font-medium text-gray-800 mb-3">Portion Controlled</h3>
-          <div className="text-3xl font-bold text-green-600">{portionCount}/{totalMeals}</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-green-600 h-2 rounded-full" style={{width: `${portionPct}%`}} />
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-5">Activity (Last 30 Days)</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-base font-medium">Cardio Sessions</span>
+              <span className="text-2xl font-bold text-indigo-600">{cardioSessions}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-base font-medium">Tennis Sessions</span>
+              <span className="text-2xl font-bold text-green-600">{tennisSessions}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-base font-medium">Strength Sessions</span>
+              <span className="text-2xl font-bold text-purple-600">{strengthSessions}</span>
+            </div>
           </div>
-          <p className={`text-sm font-medium mt-3 ${getNudge(portionPct).color}`}>
-            {getNudge(portionPct).message}
-          </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-base font-medium text-gray-800 mb-3">Avoided Dessert</h3>
-          <div className="text-3xl font-bold text-purple-600">{avoidedDessertCount}/{totalMeals}</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-purple-600 h-2 rounded-full" style={{width: `${avoidedDessertPct}%`}} />
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-5">Meal Habits Trend</h2>
+          <div className="h-64 relative">
+            <canvas ref={lineCanvasRef}></canvas>
           </div>
-          <p className={`text-sm font-medium mt-3 ${getNudge(avoidedDessertPct).color}`}>
-            {getNudge(avoidedDessertPct).message}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-base font-medium text-gray-800 mb-3">Avoided Snack</h3>
-          <div className="text-3xl font-bold text-orange-600">{avoidedSnackCount}/{totalDays}</div>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-            <div className="bg-orange-600 h-2 rounded-full" style={{width: `${avoidedSnackPct}%`}} />
-          </div>
-          <p className={`text-sm font-medium mt-3 ${getNudge(avoidedSnackPct).color}`}>
-            {getNudge(avoidedSnackPct).message}
-          </p>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-5">
-          <h3 className="text-base font-medium text-gray-800 mb-3">Top Cuisines</h3>
-          {sortedCuisines.length === 0 ? (
-            <p className="text-sm text-gray-500">No data yet</p>
-          ) : (
-            <div className="space-y-2 text-sm">
-              {sortedCuisines.map(([cuisine, count]) => (
-                <div key={cuisine} className="flex justify-between">
-                  <span className="text-gray-800">{cuisine}</span>
-                  <span className="text-gray-600">{count}x</span>
-                </div>
-              ))}
+          {selectedPoint && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg text-center">
+              <p className="text-sm font-medium text-gray-600">On {selectedPoint.date}:</p>
+              <p className="text-base font-bold mt-1">
+                Active: {selectedPoint.active} · Portion: {selectedPoint.portion} · Avoided Dessert: {selectedPoint.dessert}
+              </p>
             </div>
           )}
+        </div>
+
+        <div className="space-y-6">
+          <h2 className="text-xl font-bold text-gray-800">Cuisine by Meal</h2>
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-base font-semibold mb-4">Breakfast</h3>
+            <div className="h-48"><canvas ref={breakfastRef}></canvas></div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-base font-semibold mb-4">Lunch</h3>
+            <div className="h-48"><canvas ref={lunchRef}></canvas></div>
+          </div>
+          <div className="bg-white rounded-2xl shadow-md p-6">
+            <h3 className="text-base font-semibold mb-4">Dinner</h3>
+            <div className="h-48"><canvas ref={dinnerRef}></canvas></div>
+          </div>
         </div>
       </div>
     </div>
