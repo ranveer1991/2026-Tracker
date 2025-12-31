@@ -165,12 +165,6 @@
         activity.cardio !== "none" ||
         activity.tennis;
 
-      const handleSubmit = async () => {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) {
-          alert("Please log in first");
-          return;
-        }
 
         const payload = {
           user_id: user.id,
@@ -179,13 +173,20 @@
           activity
         };
 
-        const { error } = await supabaseClient
-          .from("daily_logs")
-          .upsert(payload, { onConflict: "user_id,log_date" });
+      // No auth needed
+const payload = {
+  user_id: "me", // static ID for your personal use
+  log_date: new Date().toISOString().split("T")[0],
+  meals,
+  activity
+};
 
-        if (error) alert(error.message);
-        else alert("✅ Day logged!");
-      };
+const { error } = await supabaseClient
+  .from("daily_logs")
+  .upsert(payload, { onConflict: "user_id,log_date" });
+
+if (error) alert(error.message);
+else alert("✅ Day logged!");
 
       return (
         <div className="max-w-md mx-auto pb-20">
