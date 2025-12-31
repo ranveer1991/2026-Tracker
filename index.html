@@ -1,15 +1,22 @@
 <script type="text/babel">
     const { useState, useEffect } = React;
     
+    // --- CONFIGURATION ---
     const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
     const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Initialize inside a try-catch to prevent total page failure
+    let supabaseClient;
+    try {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    } catch (e) {
+        console.error("Supabase failed to load:", e);
+    }
 
-    // Edit 3: Added "Others" to cuisines
     const cuisines = ["Italian", "Mexican", "Asian", "American", "Indian", "Mediterranean", "Health Food", "Others"];
 
     const App = () => {
-        // Edit 2: Initializing with empty/null values so they aren't "on" by default
+        // Edit 2: Radio/Checkboxes off by default (null/empty)
         const [meals, setMeals] = useState({
             Breakfast: { cuisine: '', where: '', healthy: null, quantity: null },
             Lunch: { cuisine: '', where: '', healthy: null, quantity: null },
@@ -25,21 +32,19 @@
         });
 
         const updateMeal = (meal, field, value) => {
-            setMeals(prev => ({ 
-                ...prev, 
-                [meal]: { ...prev[meal], [field]: value } 
-            }));
+            setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
         };
 
         const handleSubmit = async () => {
+            if (!supabaseClient) return alert("Database not connected");
+            
             const { error } = await supabaseClient.from('daily_logs').insert([{
                 meal_data: meals,
                 cardio_type: activity.cardio,
                 tennis: activity.tennis,
                 intensity: activity.intensity,
                 rehab: activity.rehab,
-                stretch: activity.stretch,
-                created_at: new Date().toISOString()
+                stretch: activity.stretch
             }]);
             
             if (error) alert("Error: " + error.message);
@@ -53,20 +58,19 @@
         );
 
         const MealCard = ({ name }) => (
-            // Edit 1: Added overflow-hidden and fixed structure to prevent layout jumps
+            // Edit 1: Fixed heights (h-[56px]) prevent layout jumping
             <div className="bg-white rounded-[14px] mx-4 mb-4 divide-y divide-gray-100 overflow-hidden shadow-sm">
                 <div className="p-4 flex justify-between items-center h-[56px]">
                     <span className="font-semibold text-lg">{name}</span>
                     <select 
-                        className="text-[#007AFF] bg-transparent outline-none text-right max-w-[150px]"
+                        className="text-[#007AFF] bg-transparent outline-none text-right"
                         value={meals[name].cuisine}
                         onChange={(e) => updateMeal(name, 'cuisine', e.target.value)}
                     >
-                        <option value="" disabled>Select Cuisine</option>
+                        <option value="">Cuisine</option>
                         {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                 </div>
-                
                 <div className="p-4 flex justify-between items-center h-[56px]">
                     <span className="text-gray-700">Location</span>
                     <div className="bg-[#EEEEF0] p-1 rounded-lg flex gap-1">
@@ -78,23 +82,15 @@
                         ))}
                     </div>
                 </div>
-
                 <div className="p-4 flex justify-between items-center h-[56px]">
                     <span className="text-gray-700">Healthy Choice</span>
-                    <input 
-                        type="checkbox" 
-                        checked={meals[name].healthy === 'Y'} 
-                        onChange={(e) => updateMeal(name, 'healthy', e.target.checked ? 'Y' : 'N')} 
-                    />
+                    <input type="checkbox" checked={meals[name].healthy === 'Y'} 
+                        onChange={(e) => updateMeal(name, 'healthy', e.target.checked ? 'Y' : 'N')} />
                 </div>
-
                 <div className="p-4 flex justify-between items-center h-[56px]">
                     <span className="text-gray-700">Portion Controlled</span>
-                    <input 
-                        type="checkbox" 
-                        checked={meals[name].quantity === 'Controlled'} 
-                        onChange={(e) => updateMeal(name, 'quantity', e.target.checked ? 'Controlled' : 'Not')} 
-                    />
+                    <input type="checkbox" checked={meals[name].quantity === 'Controlled'} 
+                        onChange={(e) => updateMeal(name, 'quantity', e.target.checked ? 'Controlled' : 'Not')} />
                 </div>
             </div>
         );
@@ -102,7 +98,7 @@
         return (
             <div className="max-w-md mx-auto min-h-screen pb-12 safe-top">
                 <div className="pt-8 px-5 pb-4">
-                    <h1 className="text-3xl font-bold tracking-tight">Daily Habit Tracker</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-gray-900">Daily Habit Tracker</h1>
                     <p className="text-[#6E6E73]">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
                 </div>
 
