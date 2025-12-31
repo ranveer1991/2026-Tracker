@@ -2,12 +2,22 @@
 
   const { useState } = React;
 
+/* ================== SUPABASE ================== */
 const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
-
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const cuisines = ["italian","mexican","asian","american","indian","mediterranean","healthy","other"];
+/* ================== CONSTANTS ================== */
+const cuisines = [
+  "italian",
+  "mexican",
+  "asian",
+  "american",
+  "indian",
+  "mediterranean",
+  "healthy",
+  "other"
+];
 
 const defaultMeals = {
   breakfast: { cuisine: "", where: "home", healthy: false, portion: false },
@@ -23,10 +33,13 @@ const defaultActivity = {
   stretch: false
 };
 
+/* ================== UI COMPONENTS ================== */
 const Toggle = ({ value, onChange }) => (
   <button
     onClick={() => onChange(!value)}
-    className={`w-12 h-7 rounded-full transition ${value ? "bg-green-500" : "bg-gray-300"}`}
+    className={`w-12 h-7 rounded-full transition ${
+      value ? "bg-green-500" : "bg-gray-300"
+    }`}
   >
     <span
       className={`block w-5 h-5 bg-white rounded-full transform transition ${
@@ -44,7 +57,9 @@ const MealCard = ({ label, icon, data, onChange }) => {
     data.where,
     data.healthy && "🥗",
     data.portion && "⚖️"
-  ].filter(Boolean).join(" · ");
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <div className="bg-white mx-4 mb-4 rounded-2xl shadow-sm overflow-hidden">
@@ -62,27 +77,33 @@ const MealCard = ({ label, icon, data, onChange }) => {
 
       {open && (
         <div className="divide-y">
-          <div className="p-4 flex justify-between">
+          <div className="p-4 flex justify-between items-center">
             <span>Cuisine</span>
             <select
-              className="text-[#007AFF]"
+              className="text-[#007AFF] bg-transparent"
               value={data.cuisine}
-              onChange={e => onChange("cuisine", e.target.value)}
+              onChange={(e) => onChange("cuisine", e.target.value)}
             >
               <option value="">Select</option>
-              {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+              {cuisines.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
 
-          <div className="p-4 flex justify-between">
+          <div className="p-4 flex justify-between items-center">
             <span>Where</span>
             <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
-              {["home","out"].map(w => (
+              {["home", "out"].map((w) => (
                 <button
                   key={w}
                   onClick={() => onChange("where", w)}
-                  className={`px-4 py-1 rounded-md ${
-                    data.where === w ? "bg-white shadow" : "text-gray-500"
+                  className={`px-4 py-1 rounded-md text-sm ${
+                    data.where === w
+                      ? "bg-white shadow font-medium"
+                      : "text-gray-500"
                   }`}
                 >
                   {w}
@@ -91,14 +112,20 @@ const MealCard = ({ label, icon, data, onChange }) => {
             </div>
           </div>
 
-          <div className="p-4 flex justify-between">
+          <div className="p-4 flex justify-between items-center">
             <span>Healthy Choice</span>
-            <Toggle value={data.healthy} onChange={v => onChange("healthy", v)} />
+            <Toggle
+              value={data.healthy}
+              onChange={(v) => onChange("healthy", v)}
+            />
           </div>
 
-          <div className="p-4 flex justify-between">
+          <div className="p-4 flex justify-between items-center">
             <span>Portion Controlled</span>
-            <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
+            <Toggle
+              value={data.portion}
+              onChange={(v) => onChange("portion", v)}
+            />
           </div>
         </div>
       )}
@@ -106,22 +133,34 @@ const MealCard = ({ label, icon, data, onChange }) => {
   );
 };
 
+/* ================== MAIN APP ================== */
 const App = () => {
   const [meals, setMeals] = useState(defaultMeals);
   const [activity, setActivity] = useState(defaultActivity);
 
   const updateMeal = (meal, field, value) => {
-    setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
+    setMeals((prev) => ({
+      ...prev,
+      [meal]: { ...prev[meal], [field]: value }
+    }));
   };
 
   const hasData =
-    Object.values(meals).some(m => m.cuisine || m.healthy || m.portion) ||
+    Object.values(meals).some(
+      (m) => m.cuisine || m.healthy || m.portion
+    ) ||
     activity.cardio !== "none" ||
     activity.tennis;
 
   const handleSubmit = async () => {
-    const user = (await supabaseClient.auth.getUser()).data.user;
-    if (!user) return alert("Not logged in");
+    const {
+      data: { user }
+    } = await supabaseClient.auth.getUser();
+
+    if (!user) {
+      alert("Please log in first");
+      return;
+    }
 
     const payload = {
       user_id: user.id,
@@ -134,32 +173,64 @@ const App = () => {
       .from("daily_logs")
       .upsert(payload, { onConflict: "user_id,log_date" });
 
-    if (error) alert(error.message);
-    else alert("✅ Day logged!");
+    if (error) {
+      alert(error.message);
+    } else {
+      alert("✅ Day logged successfully!");
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto pb-16">
+    <div className="max-w-md mx-auto pb-20">
       <div className="px-5 pt-8 pb-4">
-        <h1 className="text-3xl font-bold">Daily Habit Tracker</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Daily Habit Tracker
+        </h1>
         <p className="text-gray-500">
-          {new Date().toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" })}
+          {new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric"
+          })}
         </p>
       </div>
 
-      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">Meals</h2>
-      <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
-      <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
-      <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">
+        Meals
+      </h2>
 
-      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">Activity</h2>
+      <MealCard
+        label="Breakfast"
+        icon="🍳"
+        data={meals.breakfast}
+        onChange={(f, v) => updateMeal("breakfast", f, v)}
+      />
+      <MealCard
+        label="Lunch"
+        icon="🥗"
+        data={meals.lunch}
+        onChange={(f, v) => updateMeal("lunch", f, v)}
+      />
+      <MealCard
+        label="Dinner"
+        icon="🍽️"
+        data={meals.dinner}
+        onChange={(f, v) => updateMeal("dinner", f, v)}
+      />
+
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">
+        Activity
+      </h2>
+
       <div className="bg-white mx-4 rounded-2xl divide-y shadow-sm">
-        <div className="p-4 flex justify-between">
+        <div className="p-4 flex justify-between items-center">
           <span>Cardio</span>
           <select
-            className="text-[#007AFF]"
+            className="text-[#007AFF] bg-transparent"
             value={activity.cardio}
-            onChange={e => setActivity({...activity, cardio:e.target.value})}
+            onChange={(e) =>
+              setActivity({ ...activity, cardio: e.target.value })
+            }
           >
             <option value="none">None</option>
             <option value="run">Run</option>
@@ -168,10 +239,18 @@ const App = () => {
           </select>
         </div>
 
-        {["tennis","rehab","stretch"].map(k => (
-          <div key={k} className="p-4 flex justify-between">
-            <span>{k.charAt(0).toUpperCase()+k.slice(1)}</span>
-            <Toggle value={activity[k]} onChange={v => setActivity({...activity, [k]:v})} />
+        {["tennis", "rehab", "stretch"].map((k) => (
+          <div
+            key={k}
+            className="p-4 flex justify-between items-center"
+          >
+            <span>{k.charAt(0).toUpperCase() + k.slice(1)}</span>
+            <Toggle
+              value={activity[k]}
+              onChange={(v) =>
+                setActivity({ ...activity, [k]: v })
+              }
+            />
           </div>
         ))}
       </div>
@@ -181,7 +260,9 @@ const App = () => {
           disabled={!hasData}
           onClick={handleSubmit}
           className={`w-full py-4 rounded-2xl font-semibold transition ${
-            hasData ? "bg-[#007AFF] text-white" : "bg-gray-300 text-gray-500"
+            hasData
+              ? "bg-[#007AFF] text-white"
+              : "bg-gray-300 text-gray-500"
           }`}
         >
           Complete Day
@@ -191,5 +272,8 @@ const App = () => {
   );
 };
 
+/* ================== RENDER ================== */
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
 </script>
