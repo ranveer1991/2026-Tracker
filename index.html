@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Habit Tracker</title>
 
   <!-- Tailwind -->
@@ -18,133 +18,135 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    body {
-      background-color: #F2F2F7;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-  </style>
 </head>
+<body class="bg-gray-100 font-sans">
 
-<body>
-  <div id="root"></div>
+<div id="root"></div>
 
-  <script type="text/babel">
-    const { useState } = React;
+<script type="text/babel">
+const { useState } = React;
 
-    /* ================= SUPABASE ================= */
-    const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// --- SUPABASE ---
+const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
+const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
+const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    /* ================= DATA ================= */
-    const cuisines = ["Indian","Thai","Salad","Mexican","Soup / Noodles","Mediterranean","Other"];
-    const defaultMeals = {
-      breakfast: { cuisine: "", where: "Home", healthy: false, portion: false },
-      lunch: { cuisine: "", where: "Home", healthy: false, portion: false },
-      dinner: { cuisine: "", where: "Home", healthy: false, portion: false }
-    };
-    const defaultActivity = { cardio: "None", tennis: false, intensity: "M", rehab: false, stretch: false };
+// --- DATA ---
+const cuisines = ["italian","mexican","asian","american","indian","mediterranean","healthy","other"];
+const defaultMeals = {
+  breakfast: { cuisine: "", where: "home", healthy: false, portion: false },
+  lunch: { cuisine: "", where: "home", healthy: false, portion: false },
+  dinner: { cuisine: "", where: "home", healthy: false, portion: false }
+};
+const defaultActivity = { cardio: "none", tennis: false, intensity: "M", rehab: false, stretch: false };
 
-    /* ================= UI COMPONENTS ================= */
-    const Toggle = ({ value, onChange }) => (
-      <button onClick={() => onChange(!value)} className={`w-12 h-7 rounded-full transition ${value ? "bg-green-500" : "bg-gray-300"}`}>
-        <span className={`block w-5 h-5 bg-white rounded-full transform transition ${value ? "translate-x-6" : "translate-x-1"}`} />
+// --- TOGGLE COMPONENT ---
+const Toggle = ({ value, onChange }) => (
+  <button onClick={() => onChange(!value)} className={`w-12 h-7 rounded-full ${value?"bg-green-500":"bg-gray-300"}`}>
+    <span className={`block w-5 h-5 bg-white rounded-full transform transition ${value?"translate-x-6":"translate-x-1"}`} />
+  </button>
+);
+
+// --- MEAL CARD COMPONENT ---
+const MealCard = ({ label, icon, data, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const summary = [data.cuisine, data.where, data.healthy && "🥗", data.portion && "⚖️"].filter(Boolean).join(" · ");
+
+  return (
+    <div className="bg-white mx-4 mb-4 rounded-2xl shadow-sm">
+      <button onClick={()=>setOpen(!open)} className="w-full p-4 flex justify-between items-center">
+        <span className="font-semibold text-lg flex items-center gap-2">{icon} {label}</span>
+        <span className="text-sm text-gray-500">{summary||"Tap to log"}</span>
       </button>
-    );
-
-    const MealCard = ({ label, icon, data, onChange }) => {
-      const [open, setOpen] = useState(false);
-      const summary = [data.cuisine, data.where, data.healthy && "🥗", data.portion && "⚖️"].filter(Boolean).join(" · ");
-
-      return (
-        <div className="bg-white mx-4 mb-4 rounded-2xl shadow-sm overflow-hidden">
-          <button onClick={() => setOpen(!open)} className="w-full p-4 flex justify-between items-center">
-            <span className="font-semibold text-lg flex items-center gap-2">{icon} {label}</span>
-            <span className="text-sm text-gray-500">{summary || "Tap to log"}</span>
-          </button>
-          {open && (
-            <div className="divide-y">
-              <div className="p-4 flex justify-between items-center">
-                <span>Cuisine</span>
-                <select className="text-[#007AFF] bg-transparent" value={data.cuisine} onChange={e => onChange("cuisine", e.target.value)}>
-                  <option value="">Select</option>
-                  {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="p-4 flex justify-between items-center">
-                <span>Where</span>
-                <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
-                  {["home","out"].map(w => (
-                    <button key={w} onClick={() => onChange("where", w)}
-                      className={`px-4 py-1 rounded-md text-sm ${data.where === w ? "bg-white shadow font-medium" : "text-gray-500"}`}>{w}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="p-4 flex justify-between items-center">
-                <span>Healthy Choice</span>
-                <Toggle value={data.healthy} onChange={v => onChange("healthy", v)} />
-              </div>
-              <div className="p-4 flex justify-between items-center">
-                <span>Portion Controlled</span>
-                <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    /* ================= APP ================= */
-    const App = () => {
-      const [meals, setMeals] = useState(defaultMeals);
-      const [activity, setActivity] = useState(defaultActivity);
-
-      const updateMeal = (meal, field, value) => {
-        setMeals(prev => ({ ...prev, [meal]: { ...prev[meal], [field]: value } }));
-      };
-
-      const hasData = Object.values(meals).some(m => m.cuisine || m.healthy || m.portion) || activity.cardio !== "none" || activity.tennis;
-
-      // ✅ FIXED: submit wrapped in async function
-      const handleSubmit = async () => {
-        try {
-          const payload = {
-            user_id: "me", // single-user ID
-            log_date: new Date().toISOString().split("T")[0],
-            meals,
-            activity
-          };
-
-          const { error } = await supabaseClient.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
-
-          if (error) alert(error.message);
-          else alert("✅ Day logged!");
-        } catch(e) {
-          console.error(e);
-          alert("Error submitting data");
-        }
-      };
-
-      return (
-        <div className="max-w-md mx-auto pb-20">
-          <div className="px-5 pt-8 pb-4">
-            <h1 className="text-3xl font-bold">Daily Habit Tracker</h1>
-            <p className="text-gray-500">
-              {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
-            </p>
+      {open && (
+        <div className="divide-y">
+          <div className="p-4 flex justify-between items-center">
+            <span>Cuisine</span>
+            <select value={data.cuisine} onChange={e=>onChange("cuisine",e.target.value)} className="text-[#007AFF]">
+              <option value="">Select</option>
+              {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
+          <div className="p-4 flex justify-between items-center">
+            <span>Where</span>
+            <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
+              {["home","out"].map(w => (
+                <button key={w} onClick={()=>onChange("where",w)} className={`px-4 py-1 rounded-md ${data.where===w?"bg-white shadow font-medium":"text-gray-500"}`}>{w}</button>
+              ))}
+            </div>
+          </div>
+          <div className="p-4 flex justify-between items-center">
+            <span>Healthy</span>
+            <Toggle value={data.healthy} onChange={v=>onChange("healthy",v)} />
+          </div>
+          <div className="p-4 flex justify-between items-center">
+            <span>Portion Controlled</span>
+            <Toggle value={data.portion} onChange={v=>onChange("portion",v)} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
-          <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">Meals</h2>
-          <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
-          <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
-          <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
+// --- APP ---
+const App = () => {
+  const [meals,setMeals] = useState(defaultMeals);
+  const [activity,setActivity] = useState(defaultActivity);
 
-          <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">Activity</h2>
-          <div className="bg-white mx-4 rounded-2xl divide-y shadow-sm">
-            <div className="p-4 flex justify-between items-center">
-              <span>Cardio</span>
-              <select className="text-[#007AFF] bg-transparent" value={activity.cardio} onChange={e => setActivity({...activity, cardio:e.target.value})}>
-                <option value="none">None</option>
-                <op
+  const updateMeal = (meal, field, value) => {
+    setMeals(prev => ({...prev,[meal]:{...prev[meal],[field]:value}}));
+  };
 
+  const hasData = Object.values(meals).some(m=>m.cuisine||m.healthy||m.portion) || activity.cardio!=="none" || activity.tennis;
+
+  const handleSubmit = async () => {
+    const payload = { user_id:"me", log_date: new Date().toISOString().split("T")[0], meals, activity };
+    const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
+    if(error) alert(error.message); else alert("✅ Day logged!");
+  };
+
+  return (
+    <div className="max-w-md mx-auto pb-20">
+      <div className="px-5 pt-8 pb-4">
+        <h1 className="text-3xl font-bold">Daily Habit Tracker</h1>
+        <p className="text-gray-500">{new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"})}</p>
+      </div>
+
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">Meals</h2>
+      <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
+      <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
+      <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
+
+      <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">Activity</h2>
+      <div className="bg-white mx-4 rounded-2xl divide-y shadow-sm">
+        <div className="p-4 flex justify-between items-center">
+          <span>Cardio</span>
+          <select value={activity.cardio} onChange={e=>setActivity({...activity,cardio:e.target.value})} className="text-[#007AFF] bg-transparent">
+            <option value="none">None</option>
+            <option value="run">Run</option>
+            <option value="cycle">Cycle</option>
+            <option value="swim">Swim</option>
+          </select>
+        </div>
+        {["tennis","rehab","stretch"].map(k=>(
+          <div key={k} className="p-4 flex justify-between items-center">
+            <span>{k.charAt(0).toUpperCase()+k.slice(1)}</span>
+            <Toggle value={activity[k]} onChange={v=>setActivity({...activity,[k]:v})} />
+          </div>
+        ))}
+      </div>
+
+      <div className="p-4 mt-6">
+        <button disabled={!hasData} onClick={handleSubmit} className={`w-full py-4 rounded-2xl font-semibold transition ${hasData?"bg-[#007AFF] text-white":"bg-gray-300 text-gray-500"}`}>
+          Complete Day
+        </button>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
