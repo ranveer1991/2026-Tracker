@@ -47,44 +47,36 @@ const Toggle = ({ value, onChange }) => (
   </button>
 );
 
-// --- MEAL CARD COMPONENT ---
-const MealCard = ({ label, icon, data, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const summary = [data.cuisine, data.where, data.healthy && "🥗", data.portion && "⚖️"].filter(Boolean).join(" · ");
-
+// --- MEAL SECTION COMPONENT (expanded, no collapsible card) ---
+const MealSection = ({ label, icon, data, onChange }) => {
   return (
-    <div className="bg-white mx-4 mb-4 rounded-2xl shadow-sm">
-      <button onClick={()=>setOpen(!open)} className="w-full p-4 flex justify-between items-center">
+    <div className="bg-white mx-4 mb-6 rounded-2xl shadow-sm divide-y">
+      <div className="p-4">
         <span className="font-semibold text-lg flex items-center gap-2">{icon} {label}</span>
-        <span className="text-sm text-gray-500">{summary||"Tap to log"}</span>
-      </button>
-      {open && (
-        <div className="divide-y">
-          <div className="p-4 flex justify-between items-center">
-            <span>Cuisine</span>
-            <select value={data.cuisine} onChange={e=>onChange("cuisine",e.target.value)} className="text-[#007AFF]">
-              <option value="">Select</option>
-              {cuisines.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="p-4 flex justify-between items-center">
-            <span>Where</span>
-            <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
-              {["home","out"].map(w => (
-                <button key={w} onClick={()=>onChange("where",w)} className={`px-4 py-1 rounded-md ${data.where===w?"bg-white shadow font-medium":"text-gray-500"}`}>{w}</button>
-              ))}
-            </div>
-          </div>
-          <div className="p-4 flex justify-between items-center">
-            <span>Healthy</span>
-            <Toggle value={data.healthy} onChange={v=>onChange("healthy",v)} />
-          </div>
-          <div className="p-4 flex justify-between items-center">
-            <span>Portion Controlled</span>
-            <Toggle value={data.portion} onChange={v=>onChange("portion",v)} />
-          </div>
+      </div>
+      <div className="p-4 flex justify-between items-center">
+        <span>Cuisine</span>
+        <select value={data.cuisine} onChange={e=>onChange("cuisine",e.target.value)} className="text-[#007AFF]">
+          <option value="">Select</option>
+          {cuisines.map(c => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+        </select>
+      </div>
+      <div className="p-4 flex justify-between items-center">
+        <span>Where</span>
+        <div className="bg-gray-100 p-1 rounded-lg flex gap-1">
+          {["home","out"].map(w => (
+            <button key={w} onClick={()=>onChange("where",w)} className={`px-4 py-1 rounded-md capitalize ${data.where===w?"bg-white shadow font-medium":"text-gray-500"}`}>{w}</button>
+          ))}
         </div>
-      )}
+      </div>
+      <div className="p-4 flex justify-between items-center">
+        <span>Healthy</span>
+        <Toggle value={data.healthy} onChange={v=>onChange("healthy",v)} />
+      </div>
+      <div className="p-4 flex justify-between items-center">
+        <span>Portion Controlled</span>
+        <Toggle value={data.portion} onChange={v=>onChange("portion",v)} />
+      </div>
     </div>
   );
 };
@@ -98,12 +90,12 @@ const App = () => {
     setMeals(prev => ({...prev,[meal]:{...prev[meal],[field]:value}}));
   };
 
-  const hasData = Object.values(meals).some(m=>m.cuisine||m.healthy||m.portion) || activity.cardio!=="none" || activity.tennis;
+  const hasData = Object.values(meals).some(m=>m.cuisine||m.healthy||m.portion) || activity.cardio!=="none" || activity.tennis || activity.rehab || activity.stretch;
 
   const handleSubmit = async () => {
     const payload = { user_id:"me", log_date: new Date().toISOString().split("T")[0], meals, activity };
     const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
-    if(error) alert(error.message); else alert("✅ Day logged!");
+    if(error) alert("Error: " + error.message); else alert("✅ Day logged!");
   };
 
   return (
@@ -114,9 +106,9 @@ const App = () => {
       </div>
 
       <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2">Meals</h2>
-      <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
-      <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
-      <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
+      <MealSection label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v)=>updateMeal("breakfast",f,v)} />
+      <MealSection label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v)=>updateMeal("lunch",f,v)} />
+      <MealSection label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v)=>updateMeal("dinner",f,v)} />
 
       <h2 className="text-xs uppercase text-gray-500 ml-4 mb-2 mt-6">Activity</h2>
       <div className="bg-white mx-4 rounded-2xl divide-y shadow-sm">
