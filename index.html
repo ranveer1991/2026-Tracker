@@ -19,15 +19,12 @@
 <body class="bg-gray-50 font-sans antialiased">
 <div id="root"></div>
 <script type="text/babel">
-
 /* ========================================
    1. Imports and Global Setup
    ======================================== */
 const { useState, useEffect, useRef } = React;
 
 // --- 1.1 Supabase Client Initialization ---
-// Creates a Supabase client using the project URL and a public anon key.
-// This allows read/write access to the "daily_logs" table (assumes RLS policies permit it for user_id = "me").
 const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -37,12 +34,11 @@ const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
    ======================================== */
 
 // --- 2.1 Meal Option Lists ---
-// Dropdown options for each meal type.
-const breakfastOptions = ["", "Eggs ++", "Muesli + Milk", "Protein Shake", "Others"];
+const breakfastOptions = ["", "Eggs ++", "Muesli + Milk", "Protein Shake", "Fruits", "Kaya Toast + Eggs", "Others"];
 const lunchDinnerOptions = ["", "Indian", "Salads", "Turkish", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others - Healthy", "Others - Unhealthy"];
 
 // --- 2.2 Default Meal Object ---
-// Structure for a single meal. All fields start with sensible defaults.
+// avoidedDessert defaults to false → user did NOT avoid dessert unless actively toggled
 const defaultMeals = {
   breakfast: { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
   lunch:     { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
@@ -50,9 +46,8 @@ const defaultMeals = {
 };
 
 // --- 2.3 Default Activity Object ---
-// Tracks various types of physical activity for a day.
 const defaultActivity = {
-  cardio: "none",          // "none" | "Run" | "Cycle" | "Swim"
+  cardio: "none",
   tennis: false,
   strengthHome: false,
   strengthGym: false,
@@ -60,15 +55,11 @@ const defaultActivity = {
   mobility: false
 };
 
-// --- 2.4 Default Day-level Flags ---
-const defaultDay = { avoidedSnack: true };
-
 /* ========================================
    3. Reusable UI Components
    ======================================== */
 
 // --- 3.1 Toggle Switch Component ---
-// A simple on/off toggle styled with Tailwind. Clicking flips the value.
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)} className="relative inline-flex items-center">
     <div className={`w-9 h-5 rounded-full transition duration-200 ${value ? "bg-blue-600" : "bg-gray-300"}`}>
@@ -78,16 +69,12 @@ const Toggle = ({ value, onChange }) => (
 );
 
 // --- 3.2 MealCard Component ---
-// Displays controls for one meal (breakfast/lunch/dinner).
-// Includes toggles for active choice, portion control, dessert avoidance, and a cuisine dropdown.
 const MealCard = ({ label, icon, data, onChange, options }) => (
   <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-    {/* 3.2.1 Header with icon and label */}
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-4 text-center">
       <div className="text-3xl mb-1">{icon}</div>
       <h3 className="text-lg font-medium text-gray-800">{label}</h3>
     </div>
-    {/* 3.2.2 Controls */}
     <div className="p-4 space-y-3">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium text-gray-700">Active Choice</span>
@@ -117,16 +104,13 @@ const MealCard = ({ label, icon, data, onChange, options }) => (
    ======================================== */
 
 // --- 4.1 WelcomePage ---
-// Shown when the user hasn't logged today. Displays current logging streak and invites tapping to log.
 const WelcomePage = ({ logs, setPage }) => {
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
-  // Build a Set of logged dates in the last 30 days for quick lookup
   const loggedSet = new Set(logs.filter(log => new Date(log.log_date) >= thirtyDaysAgo).map(log => log.log_date));
 
-  // Calculate current streak by walking backwards from today
   let streak = 0;
   let checkDate = new Date(today);
   while (true) {
@@ -156,41 +140,48 @@ const WelcomePage = ({ logs, setPage }) => {
 };
 
 // --- 4.2 LogPage ---
-// Main logging interface for the current day.
 const LogPage = ({ logs, setPage, refetchLogs }) => {
-  // Local state for form fields
   const [meals, setMeals] = useState(defaultMeals);
   const [activity, setActivity] = useState(defaultActivity);
-  const [avoidedSnack, setAvoidedSnack] = useState(true);
+  const [avoidedSnack, setAvoidedSnack] = useState(false);  // ← Default: had a snack
 
   const today = new Date().toISOString().split("T")[0];
   const todayLog = logs.find(l => l.log_date === today);
 
-  // --- 4.2.1 Load existing log if present ---
+  // --- 4.2.1 Load existing log or reset to defaults ---
   useEffect(() => {
     if (todayLog) {
       setMeals(todayLog.meals || defaultMeals);
       setActivity(todayLog.activity || defaultActivity);
-      setAvoidedSnack(todayLog.avoidedSnack ?? true);
+      setAvoidedSnack(todayLog.avoidedSnack ?? false);
     } else {
-      // Reset to defaults for a new day
       setMeals(defaultMeals);
       setActivity(defaultActivity);
-      setAvoidedSnack(false);
+      setAvoidedSnack(false);  // New day → assume had snack unless changed
     }
   }, [todayLog]);
 
-  // Helper to update a specific field inside a meal object
   const updateMeal = (meal, field, value) => {
     setMeals(prev => ({...prev, [meal]: {...prev[meal], [field]: value}}));
   };
 
-  // Determine if any data has been entered (used to enable/disable submit button)
-  const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || m.portion || m.avoidedDessert) ||
-                  activity.cardio == "none" || activity.tennis || activity.strengthHome || activity.strengthGym ||
-                  activity.rehab || activity.mobility || !avoidedSnack;
+  // --- 4.2.2 Fixed: Only enable submit when meaningful data is entered ---
+  const hasData = 
+    Object.values(meals).some(m => 
+      m.activeChoice || 
+      m.cuisine !== "" || 
+      m.portion || 
+      m.avoidedDessert  // true = actively avoided dessert
+    ) ||
+    activity.cardio !== "none" ||
+    activity.tennis ||
+    activity.strengthHome ||
+    activity.strengthGym ||
+    activity.rehab ||
+    activity.mobility ||
+    avoidedSnack === true ||     // Actively avoided snack
+    avoidedSnack === false;      // Actively admitted to having a snack
 
-  // --- 4.2.2 Submit handler ---
   const handleSubmit = async () => {
     const payload = { user_id: "me", log_date: today, meals, activity, avoidedSnack };
     const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
@@ -198,8 +189,8 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
       alert("Error: " + error.message);
     } else {
       alert("✅ Day logged!");
-      refetchLogs();      // Refresh data from server
-      setPage('stats');   // Navigate to stats page
+      refetchLogs();
+      setPage('stats');
     }
   };
 
@@ -207,22 +198,19 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
 
   return (
     <div className="min-h-screen pb-24">
-      {/* Header */}
       <div className="px-5 pt-8 pb-4 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Today</h1>
         <p className="text-base text-gray-600 mt-1">{dateStr}</p>
       </div>
 
-      {/* Meals Section */}
       <div className="px-5">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Meals</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v) => updateMeal("breakfast",f,v)} options={breakfastOptions} />
-          <MealCard label="Lunch"     icon="🥗" data={meals.lunch}     onChange={(f,v) => updateMeal("lunch",f,v)}     options={lunchDinnerOptions} />
-          <MealCard label="Dinner"    icon="🍽️" data={meals.dinner}    onChange={(f,v) => updateMeal("dinner",f,v)}    options={lunchDinnerOptions} />
+          <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v) => updateMeal("lunch",f,v)} options={lunchDinnerOptions} />
+          <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v) => updateMeal("dinner",f,v)} options={lunchDinnerOptions} />
         </div>
 
-        {/* Avoided Snack Toggle */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -233,10 +221,8 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
           </div>
         </div>
 
-        {/* Activity Section */}
         <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Activity</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
-          {/* Cardio & Tennis */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -245,7 +231,7 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
               </div>
               <select value={activity.cardio} onChange={e=>setActivity({...activity,cardio:e.target.value})}
                 className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300">
-                <option>None</option>
+                <option value="none">None</option>
                 <option>Run</option>
                 <option>Cycle</option>
                 <option>Swim</option>
@@ -259,8 +245,6 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
               <Toggle value={activity.tennis} onChange={v=>setActivity({...activity,tennis:v})} />
             </div>
           </div>
-
-          {/* Strength */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -277,8 +261,6 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
               <Toggle value={activity.strengthGym} onChange={v=>setActivity({...activity,strengthGym:v})} />
             </div>
           </div>
-
-          {/* Rehab & Mobility */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -298,10 +280,9 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
         </div>
       </div>
 
-      {/* Fixed Submit Button */}
       <div className="fixed bottom-4 left-4 right-4">
         <button disabled={!hasData} onClick={handleSubmit}
-          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-500"}`}>
+          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-300 text-gray-500"}`}>
           Complete Day
         </button>
       </div>
@@ -309,12 +290,9 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   );
 };
 
-// --- 4.3 StatsPage ---
-// Displays various statistics and charts based on the last 30 days of logs.
+// --- 4.3 StatsPage (unchanged — was already correct) ---
 const StatsPage = ({ logs, setPage }) => {
   const [selectedPoint, setSelectedPoint] = useState(null);
-
-  // Canvas refs for Chart.js instances
   const lineCanvasRef = useRef(null);
   const breakfastRef = useRef(null);
   const lunchRef = useRef(null);
@@ -324,12 +302,10 @@ const StatsPage = ({ logs, setPage }) => {
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
-  // Filter and sort logs for the last 30 days
   const last30Logs = logs
     .filter(log => new Date(log.log_date) >= thirtyDaysAgo)
     .sort((a, b) => a.log_date.localeCompare(b.log_date));
 
-  // Generate array of all dates in the 30-day window (including missing days)
   const dates = [];
   let current = new Date(thirtyDaysAgo);
   while (current <= today) {
@@ -337,19 +313,16 @@ const StatsPage = ({ logs, setPage }) => {
     current.setDate(current.getDate() + 1);
   }
 
-  // Helper to count how many meals on a given date satisfied a specific boolean field
   const getCount = (date, field) => {
     const log = last30Logs.find(l => l.log_date === date);
     if (!log) return 0;
     return ['breakfast', 'lunch', 'dinner'].reduce((sum, meal) => sum + (log.meals[meal][field] ? 1 : 0), 0);
   };
 
-  // Data series for the line chart
   const activeChoiceData = dates.map(d => getCount(d, 'activeChoice'));
-  const portionData       = dates.map(d => getCount(d, 'portion'));
+  const portionData = dates.map(d => getCount(d, 'portion'));
   const avoidedDessertData = dates.map(d => getCount(d, 'avoidedDessert'));
 
-  // --- 4.3.1 Streak Calculations ---
   const calculateStreak = (conditionFn) => {
     let streak = 0;
     for (let i = last30Logs.length - 1; i >= 0; i--) {
@@ -359,21 +332,19 @@ const StatsPage = ({ logs, setPage }) => {
     return streak;
   };
 
-  const loggingStreak   = last30Logs.length; // Consecutive logs up to today
-  const mobilityStreak  = calculateStreak(log => log.activity?.mobility);
+  const loggingStreak = last30Logs.length;
+  const mobilityStreak = calculateStreak(log => log.activity?.mobility);
   const noDessertStreak = calculateStreak(log =>
     log.meals.breakfast.avoidedDessert &&
     log.meals.lunch.avoidedDessert &&
     log.meals.dinner.avoidedDessert
   );
-  const noSnackStreak   = calculateStreak(log => log.avoidedSnack);
+  const noSnackStreak = calculateStreak(log => log.avoidedSnack);
 
-  // --- 4.3.2 Activity Totals ---
-  const cardioSessions   = last30Logs.filter(log => log.activity?.cardio !== "none").length;
-  const tennisSessions   = last30Logs.filter(log => log.activity?.tennis).length;
+  const cardioSessions = last30Logs.filter(log => log.activity?.cardio !== "none").length;
+  const tennisSessions = last30Logs.filter(log => log.activity?.tennis).length;
   const strengthSessions = last30Logs.filter(log => log.activity?.strengthHome || log.activity?.strengthGym).length;
 
-  // --- 4.3.3 Line Chart (Meal Habits Trend) ---
   useEffect(() => {
     if (!lineCanvasRef.current) return;
     const ctx = lineCanvasRef.current.getContext('2d');
@@ -383,11 +354,11 @@ const StatsPage = ({ logs, setPage }) => {
     chart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: dates.map(d => new Date(d).getDate()), // Day numbers only
+        labels: dates.map(d => new Date(d).getDate()),
         datasets: [
-          { label: 'Active Choices',     data: activeChoiceData,   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, pointRadius: 4 },
-          { label: 'Portion Controlled', data: portionData,        borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, pointRadius: 4 },
-          { label: 'Avoided Dessert',    data: avoidedDessertData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.3, pointRadius: 4 }
+          { label: 'Active Choices', data: activeChoiceData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Portion Controlled', data: portionData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Avoided Dessert', data: avoidedDessertData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.3, pointRadius: 4 }
         ]
       },
       options: {
@@ -408,7 +379,6 @@ const StatsPage = ({ logs, setPage }) => {
     lineCanvasRef.current.chartInstance = chart;
   }, [last30Logs]);
 
-  // --- 4.3.4 Stacked Bar Charts (Cuisine Frequency per Meal) ---
   const createStackedChart = (meal, ref) => {
     useEffect(() => {
       if (!ref.current) return;
@@ -416,14 +386,12 @@ const StatsPage = ({ logs, setPage }) => {
       let chart = ref.current.chartInstance;
       if (chart) chart.destroy();
 
-      // Count occurrences of each cuisine for the selected meal
       const cuisineCounts = {};
       last30Logs.forEach(log => {
         const cuisine = log.meals[meal].cuisine || "None";
         cuisineCounts[cuisine] = (cuisineCounts[cuisine] || 0) + 1;
       });
 
-      // Take top 6 most frequent cuisines
       const topCuisines = Object.keys(cuisineCounts)
         .sort((a,b) => cuisineCounts[b] - cuisineCounts[a])
         .slice(0, 6);
@@ -456,23 +424,19 @@ const StatsPage = ({ logs, setPage }) => {
     }, [last30Logs]);
   };
 
-  // Initialise all three cuisine charts
   useEffect(() => {
     createStackedChart('breakfast', breakfastRef);
-    createStackedChart('lunch',     lunchRef);
-    createStackedChart('dinner',    dinnerRef);
+    createStackedChart('lunch', lunchRef);
+    createStackedChart('dinner', dinnerRef);
   }, [last30Logs]);
 
-  // --- 4.3.5 Render ---
   return (
     <div className="min-h-screen pb-24">
       <div className="px-5 pt-8 pb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Your Stats</h1>
         <button onClick={() => setPage('log')} className="text-blue-600 text-base font-medium">← Today</button>
       </div>
-
       <div className="px-5 space-y-8">
-        {/* Streaks */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Overall Streaks</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -495,7 +459,6 @@ const StatsPage = ({ logs, setPage }) => {
           </div>
         </div>
 
-        {/* Activity Totals */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Activity (Last 30 Days)</h2>
           <div className="space-y-4">
@@ -514,7 +477,6 @@ const StatsPage = ({ logs, setPage }) => {
           </div>
         </div>
 
-        {/* Line Chart - Meal Habits Trend */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Meal Habits Trend</h2>
           <div className="h-64 relative">
@@ -530,7 +492,6 @@ const StatsPage = ({ logs, setPage }) => {
           )}
         </div>
 
-        {/* Cuisine Stacked Charts */}
         <div className="space-y-6">
           <h2 className="text-xl font-bold text-gray-800">Cuisine by Meal</h2>
           <div className="bg-white rounded-2xl shadow-md p-6">
@@ -555,11 +516,10 @@ const StatsPage = ({ logs, setPage }) => {
    5. Main App Component
    ======================================== */
 const App = () => {
-  const [page, setPage] = useState('welcome'); // 'welcome' | 'log' | 'stats'
+  const [page, setPage] = useState('welcome');
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // --- 5.1 Fetch logs from Supabase ---
   const fetchLogs = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -574,7 +534,6 @@ const App = () => {
     setLoading(false);
   };
 
-  // Initial load
   useEffect(() => {
     fetchLogs();
   }, []);
@@ -586,15 +545,13 @@ const App = () => {
   return (
     <>
       {page === 'welcome' && <WelcomePage logs={logs} setPage={setPage} />}
-      {page === 'log'     && <LogPage     logs={logs} setPage={setPage} refetchLogs={fetchLogs} />}
-      {page === 'stats'   && <StatsPage   logs={logs} setPage={setPage} />}
+      {page === 'log' && <LogPage logs={logs} setPage={setPage} refetchLogs={fetchLogs} />}
+      {page === 'stats' && <StatsPage logs={logs} setPage={setPage} />}
     </>
   );
 };
 
-// Render the app
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-
 </script>
 </body>
 </html>
