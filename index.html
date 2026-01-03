@@ -4,55 +4,71 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Habit Tracker</title>
-
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <!-- React 18 -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
   <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <!-- Chart.js v3 -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
-
 <div id="root"></div>
-
 <script type="text/babel">
+
+/* ========================================
+   1. Imports and Global Setup
+   ======================================== */
 const { useState, useEffect, useRef } = React;
 
-// --- SUPABASE ---
+// --- 1.1 Supabase Client Initialization ---
+// Creates a Supabase client using the project URL and a public anon key.
+// This allows read/write access to the "daily_logs" table (assumes RLS policies permit it for user_id = "me").
 const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
 const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// --- DATA ---
-const breakfastOptions = ["", "Eggs ++", "Muesli + Milk", "Protein Shake", "Others"];
-const lunchDinnerOptions = ["", "Indian", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others"];
+/* ========================================
+   2. Constants and Default Data Structures
+   ======================================== */
 
+// --- 2.1 Meal Option Lists ---
+// Dropdown options for each meal type.
+const breakfastOptions = ["", "Eggs ++", "Muesli + Milk", "Protein Shake", "Others"];
+const lunchDinnerOptions = ["", "Indian", "Salads", "Turkish", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others - Healthy", "Others - Unhealthy"];
+
+// --- 2.2 Default Meal Object ---
+// Structure for a single meal. All fields start with sensible defaults.
 const defaultMeals = {
-  breakfast: { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true },
-  lunch:     { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true },
-  dinner:    { activeChoice: false, cuisine: "", portion: false, avoidedDessert: true }
+  breakfast: { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
+  lunch:     { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
+  dinner:    { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false }
 };
-const defaultActivity = { 
-  cardio: "none", 
-  tennis: false, 
+
+// --- 2.3 Default Activity Object ---
+// Tracks various types of physical activity for a day.
+const defaultActivity = {
+  cardio: "none",          // "none" | "Run" | "Cycle" | "Swim"
+  tennis: false,
   strengthHome: false,
   strengthGym: false,
   rehab: false,
   mobility: false
 };
+
+// --- 2.4 Default Day-level Flags ---
 const defaultDay = { avoidedSnack: true };
 
-// --- TOGGLE COMPONENT ---
+/* ========================================
+   3. Reusable UI Components
+   ======================================== */
+
+// --- 3.1 Toggle Switch Component ---
+// A simple on/off toggle styled with Tailwind. Clicking flips the value.
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)} className="relative inline-flex items-center">
     <div className={`w-9 h-5 rounded-full transition duration-200 ${value ? "bg-blue-600" : "bg-gray-300"}`}>
@@ -61,33 +77,33 @@ const Toggle = ({ value, onChange }) => (
   </button>
 );
 
-// --- MEAL CARD ---
+// --- 3.2 MealCard Component ---
+// Displays controls for one meal (breakfast/lunch/dinner).
+// Includes toggles for active choice, portion control, dessert avoidance, and a cuisine dropdown.
 const MealCard = ({ label, icon, data, onChange, options }) => (
   <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+    {/* 3.2.1 Header with icon and label */}
     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-4 text-center">
       <div className="text-3xl mb-1">{icon}</div>
       <h3 className="text-lg font-medium text-gray-800">{label}</h3>
     </div>
-
+    {/* 3.2.2 Controls */}
     <div className="p-4 space-y-3">
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium text-gray-700">Active Choice</span>
         <Toggle value={data.activeChoice} onChange={v => onChange("activeChoice", v)} />
       </div>
-
-      <select 
-        value={data.cuisine} 
+      <select
+        value={data.cuisine}
         onChange={e => onChange("cuisine", e.target.value)}
         className="w-full px-3 py-2 bg-gray-100 rounded text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-300"
       >
         {options.map(opt => <option key={opt} value={opt}>{opt || "—"}</option>)}
       </select>
-
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium text-gray-700">Portion Controlled</span>
         <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
       </div>
-
       <div className="flex justify-between items-center">
         <span className="text-sm font-medium text-gray-700">Avoided Dessert</span>
         <Toggle value={data.avoidedDessert} onChange={v => onChange("avoidedDessert", v)} />
@@ -96,14 +112,21 @@ const MealCard = ({ label, icon, data, onChange, options }) => (
   </div>
 );
 
-// --- WELCOME PAGE ---
+/* ========================================
+   4. Page Components
+   ======================================== */
+
+// --- 4.1 WelcomePage ---
+// Shown when the user hasn't logged today. Displays current logging streak and invites tapping to log.
 const WelcomePage = ({ logs, setPage }) => {
   const today = new Date();
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
+  // Build a Set of logged dates in the last 30 days for quick lookup
   const loggedSet = new Set(logs.filter(log => new Date(log.log_date) >= thirtyDaysAgo).map(log => log.log_date));
 
+  // Calculate current streak by walking backwards from today
   let streak = 0;
   let checkDate = new Date(today);
   while (true) {
@@ -115,8 +138,8 @@ const WelcomePage = ({ logs, setPage }) => {
   }
 
   return (
-    <button 
-      onClick={() => setPage('log')} 
+    <button
+      onClick={() => setPage('log')}
       className="h-screen w-full flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 focus:outline-none"
     >
       <div className="text-center px-6">
@@ -132,8 +155,10 @@ const WelcomePage = ({ logs, setPage }) => {
   );
 };
 
-// --- LOG PAGE ---
+// --- 4.2 LogPage ---
+// Main logging interface for the current day.
 const LogPage = ({ logs, setPage, refetchLogs }) => {
+  // Local state for form fields
   const [meals, setMeals] = useState(defaultMeals);
   const [activity, setActivity] = useState(defaultActivity);
   const [avoidedSnack, setAvoidedSnack] = useState(true);
@@ -141,34 +166,40 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   const today = new Date().toISOString().split("T")[0];
   const todayLog = logs.find(l => l.log_date === today);
 
+  // --- 4.2.1 Load existing log if present ---
   useEffect(() => {
     if (todayLog) {
       setMeals(todayLog.meals || defaultMeals);
       setActivity(todayLog.activity || defaultActivity);
       setAvoidedSnack(todayLog.avoidedSnack ?? true);
     } else {
+      // Reset to defaults for a new day
       setMeals(defaultMeals);
       setActivity(defaultActivity);
-      setAvoidedSnack(true);
+      setAvoidedSnack(false);
     }
   }, [todayLog]);
 
+  // Helper to update a specific field inside a meal object
   const updateMeal = (meal, field, value) => {
     setMeals(prev => ({...prev, [meal]: {...prev[meal], [field]: value}}));
   };
 
-  const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || m.portion || !m.avoidedDessert) ||
-                  activity.cardio !== "none" || activity.tennis || activity.strengthHome || activity.strengthGym ||
+  // Determine if any data has been entered (used to enable/disable submit button)
+  const hasData = Object.values(meals).some(m => m.activeChoice || m.cuisine || m.portion || m.avoidedDessert) ||
+                  activity.cardio == "none" || activity.tennis || activity.strengthHome || activity.strengthGym ||
                   activity.rehab || activity.mobility || !avoidedSnack;
 
+  // --- 4.2.2 Submit handler ---
   const handleSubmit = async () => {
     const payload = { user_id: "me", log_date: today, meals, activity, avoidedSnack };
     const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
-    if (error) alert("Error: " + error.message);
-    else {
+    if (error) {
+      alert("Error: " + error.message);
+    } else {
       alert("✅ Day logged!");
-      refetchLogs();
-      setPage('stats');
+      refetchLogs();      // Refresh data from server
+      setPage('stats');   // Navigate to stats page
     }
   };
 
@@ -176,19 +207,22 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
 
   return (
     <div className="min-h-screen pb-24">
+      {/* Header */}
       <div className="px-5 pt-8 pb-4 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Today</h1>
         <p className="text-base text-gray-600 mt-1">{dateStr}</p>
       </div>
 
+      {/* Meals Section */}
       <div className="px-5">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Meals</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
           <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v) => updateMeal("breakfast",f,v)} options={breakfastOptions} />
-          <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v) => updateMeal("lunch",f,v)} options={lunchDinnerOptions} />
-          <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v) => updateMeal("dinner",f,v)} options={lunchDinnerOptions} />
+          <MealCard label="Lunch"     icon="🥗" data={meals.lunch}     onChange={(f,v) => updateMeal("lunch",f,v)}     options={lunchDinnerOptions} />
+          <MealCard label="Dinner"    icon="🍽️" data={meals.dinner}    onChange={(f,v) => updateMeal("dinner",f,v)}    options={lunchDinnerOptions} />
         </div>
 
+        {/* Avoided Snack Toggle */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
@@ -199,8 +233,10 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
           </div>
         </div>
 
+        {/* Activity Section */}
         <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Activity</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+          {/* Cardio & Tennis */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -224,6 +260,7 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
             </div>
           </div>
 
+          {/* Strength */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -241,6 +278,7 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
             </div>
           </div>
 
+          {/* Rehab & Mobility */}
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -260,6 +298,7 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
         </div>
       </div>
 
+      {/* Fixed Submit Button */}
       <div className="fixed bottom-4 left-4 right-4">
         <button disabled={!hasData} onClick={handleSubmit}
           className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white" : "bg-gray-300 text-gray-500"}`}>
@@ -270,10 +309,12 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   );
 };
 
-// --- STATS PAGE FIXED ---
+// --- 4.3 StatsPage ---
+// Displays various statistics and charts based on the last 30 days of logs.
 const StatsPage = ({ logs, setPage }) => {
   const [selectedPoint, setSelectedPoint] = useState(null);
 
+  // Canvas refs for Chart.js instances
   const lineCanvasRef = useRef(null);
   const breakfastRef = useRef(null);
   const lunchRef = useRef(null);
@@ -283,10 +324,12 @@ const StatsPage = ({ logs, setPage }) => {
   const thirtyDaysAgo = new Date(today);
   thirtyDaysAgo.setDate(today.getDate() - 30);
 
+  // Filter and sort logs for the last 30 days
   const last30Logs = logs
     .filter(log => new Date(log.log_date) >= thirtyDaysAgo)
     .sort((a, b) => a.log_date.localeCompare(b.log_date));
 
+  // Generate array of all dates in the 30-day window (including missing days)
   const dates = [];
   let current = new Date(thirtyDaysAgo);
   while (current <= today) {
@@ -294,17 +337,19 @@ const StatsPage = ({ logs, setPage }) => {
     current.setDate(current.getDate() + 1);
   }
 
+  // Helper to count how many meals on a given date satisfied a specific boolean field
   const getCount = (date, field) => {
     const log = last30Logs.find(l => l.log_date === date);
     if (!log) return 0;
     return ['breakfast', 'lunch', 'dinner'].reduce((sum, meal) => sum + (log.meals[meal][field] ? 1 : 0), 0);
   };
 
+  // Data series for the line chart
   const activeChoiceData = dates.map(d => getCount(d, 'activeChoice'));
-  const portionData = dates.map(d => getCount(d, 'portion'));
+  const portionData       = dates.map(d => getCount(d, 'portion'));
   const avoidedDessertData = dates.map(d => getCount(d, 'avoidedDessert'));
 
-  // Streaks
+  // --- 4.3.1 Streak Calculations ---
   const calculateStreak = (conditionFn) => {
     let streak = 0;
     for (let i = last30Logs.length - 1; i >= 0; i--) {
@@ -314,21 +359,21 @@ const StatsPage = ({ logs, setPage }) => {
     return streak;
   };
 
-  const loggingStreak = last30Logs.length;
-  const mobilityStreak = calculateStreak(log => log.activity?.mobility);
-  const noDessertStreak = calculateStreak(log => 
-    log.meals.breakfast.avoidedDessert && 
-    log.meals.lunch.avoidedDessert && 
+  const loggingStreak   = last30Logs.length; // Consecutive logs up to today
+  const mobilityStreak  = calculateStreak(log => log.activity?.mobility);
+  const noDessertStreak = calculateStreak(log =>
+    log.meals.breakfast.avoidedDessert &&
+    log.meals.lunch.avoidedDessert &&
     log.meals.dinner.avoidedDessert
   );
-  const noSnackStreak = calculateStreak(log => log.avoidedSnack);
+  const noSnackStreak   = calculateStreak(log => log.avoidedSnack);
 
-  // Activity totals
-  const cardioSessions = last30Logs.filter(log => log.activity?.cardio !== "none").length;
-  const tennisSessions = last30Logs.filter(log => log.activity?.tennis).length;
+  // --- 4.3.2 Activity Totals ---
+  const cardioSessions   = last30Logs.filter(log => log.activity?.cardio !== "none").length;
+  const tennisSessions   = last30Logs.filter(log => log.activity?.tennis).length;
   const strengthSessions = last30Logs.filter(log => log.activity?.strengthHome || log.activity?.strengthGym).length;
 
-  // Line Chart
+  // --- 4.3.3 Line Chart (Meal Habits Trend) ---
   useEffect(() => {
     if (!lineCanvasRef.current) return;
     const ctx = lineCanvasRef.current.getContext('2d');
@@ -338,11 +383,11 @@ const StatsPage = ({ logs, setPage }) => {
     chart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: dates.map(d => new Date(d).getDate()),
+        labels: dates.map(d => new Date(d).getDate()), // Day numbers only
         datasets: [
-          { label: 'Active Choices', data: activeChoiceData, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, pointRadius: 4 },
-          { label: 'Portion Controlled', data: portionData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, pointRadius: 4 },
-          { label: 'Avoided Dessert', data: avoidedDessertData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.3, pointRadius: 4 }
+          { label: 'Active Choices',     data: activeChoiceData,   borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Portion Controlled', data: portionData,        borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', tension: 0.3, pointRadius: 4 },
+          { label: 'Avoided Dessert',    data: avoidedDessertData, borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.1)', tension: 0.3, pointRadius: 4 }
         ]
       },
       options: {
@@ -363,7 +408,7 @@ const StatsPage = ({ logs, setPage }) => {
     lineCanvasRef.current.chartInstance = chart;
   }, [last30Logs]);
 
-  // Stacked Charts
+  // --- 4.3.4 Stacked Bar Charts (Cuisine Frequency per Meal) ---
   const createStackedChart = (meal, ref) => {
     useEffect(() => {
       if (!ref.current) return;
@@ -371,12 +416,18 @@ const StatsPage = ({ logs, setPage }) => {
       let chart = ref.current.chartInstance;
       if (chart) chart.destroy();
 
+      // Count occurrences of each cuisine for the selected meal
       const cuisineCounts = {};
       last30Logs.forEach(log => {
         const cuisine = log.meals[meal].cuisine || "None";
         cuisineCounts[cuisine] = (cuisineCounts[cuisine] || 0) + 1;
       });
-      const topCuisines = Object.keys(cuisineCounts).sort((a,b) => cuisineCounts[b] - cuisineCounts[a]).slice(0, 6);
+
+      // Take top 6 most frequent cuisines
+      const topCuisines = Object.keys(cuisineCounts)
+        .sort((a,b) => cuisineCounts[b] - cuisineCounts[a])
+        .slice(0, 6);
+
       const colors = topCuisines.map((_, i) => `hsl(${i * 60}, 70%, 60%)`);
 
       const data = {
@@ -405,12 +456,14 @@ const StatsPage = ({ logs, setPage }) => {
     }, [last30Logs]);
   };
 
+  // Initialise all three cuisine charts
   useEffect(() => {
     createStackedChart('breakfast', breakfastRef);
-    createStackedChart('lunch', lunchRef);
-    createStackedChart('dinner', dinnerRef);
+    createStackedChart('lunch',     lunchRef);
+    createStackedChart('dinner',    dinnerRef);
   }, [last30Logs]);
 
+  // --- 4.3.5 Render ---
   return (
     <div className="min-h-screen pb-24">
       <div className="px-5 pt-8 pb-6 flex justify-between items-center">
@@ -419,6 +472,7 @@ const StatsPage = ({ logs, setPage }) => {
       </div>
 
       <div className="px-5 space-y-8">
+        {/* Streaks */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Overall Streaks</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -441,6 +495,7 @@ const StatsPage = ({ logs, setPage }) => {
           </div>
         </div>
 
+        {/* Activity Totals */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Activity (Last 30 Days)</h2>
           <div className="space-y-4">
@@ -459,6 +514,7 @@ const StatsPage = ({ logs, setPage }) => {
           </div>
         </div>
 
+        {/* Line Chart - Meal Habits Trend */}
         <div className="bg-white rounded-2xl shadow-md p-6">
           <h2 className="text-xl font-bold text-gray-800 mb-5">Meal Habits Trend</h2>
           <div className="h-64 relative">
@@ -474,6 +530,7 @@ const StatsPage = ({ logs, setPage }) => {
           )}
         </div>
 
+        {/* Cuisine Stacked Charts */}
         <div className="space-y-6">
           <h2 className="text-xl font-bold text-gray-800">Cuisine by Meal</h2>
           <div className="bg-white rounded-2xl shadow-md p-6">
@@ -494,12 +551,15 @@ const StatsPage = ({ logs, setPage }) => {
   );
 };
 
-// --- MAIN APP ---
+/* ========================================
+   5. Main App Component
+   ======================================== */
 const App = () => {
-  const [page, setPage] = useState('welcome');
+  const [page, setPage] = useState('welcome'); // 'welcome' | 'log' | 'stats'
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // --- 5.1 Fetch logs from Supabase ---
   const fetchLogs = async () => {
     setLoading(true);
     const { data, error } = await supabase
@@ -514,6 +574,7 @@ const App = () => {
     setLoading(false);
   };
 
+  // Initial load
   useEffect(() => {
     fetchLogs();
   }, []);
@@ -525,13 +586,15 @@ const App = () => {
   return (
     <>
       {page === 'welcome' && <WelcomePage logs={logs} setPage={setPage} />}
-      {page === 'log' && <LogPage logs={logs} setPage={setPage} refetchLogs={fetchLogs} />}
-      {page === 'stats' && <StatsPage logs={logs} setPage={setPage} />}
+      {page === 'log'     && <LogPage     logs={logs} setPage={setPage} refetchLogs={fetchLogs} />}
+      {page === 'stats'   && <StatsPage   logs={logs} setPage={setPage} />}
     </>
   );
 };
 
+// Render the app
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+
 </script>
 </body>
 </html>
