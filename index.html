@@ -29,8 +29,8 @@ const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 /* ========================================
    2. Constants and Defaults
    ======================================== */
-const breakfastOptions = ["", "Eggs ++", "Muesli + Milk", "Protein Shake", "Others"];
-const lunchDinnerOptions = ["", "Indian", "Salads", "Turkish", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others - Healthy", "Others - Unhealthy"];
+const breakfastOptions = ["Select", "Eggs ++", "Muesli + Milk", "Protein Shake", "Fruits", "Kaya Toast + Eggs","Others"];
+const lunchDinnerOptions = ["Select", "Indian", "Salads", "Turkish", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others - Healthy", "Others - Unhealthy"];
 
 const defaultMeals = {
   breakfast: { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
