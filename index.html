@@ -4,51 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Daily Habit Tracker</title>
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React 18 -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
 <div id="root"></div>
 <script type="text/babel">
-/* ========================================
-   1. Imports and Global Setup
-   ======================================== */
 const { useState, useEffect } = React;
 
 const SUPABASE_URL = "https://lsctlfavvxasbkcvbjmq.supabase.co";
 const SUPABASE_KEY = "sb_publishable_33maxbMOQrHvDSYwFouYNQ_EWrP1s8K";
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ========================================
-   2. Constants and Defaults
-   ======================================== */
-const breakfastOptions = ["Select", "Eggs ++", "Muesli + Milk", "Protein Shake", "Fruits", "Kaya Toast + Eggs","Others"];
-const lunchDinnerOptions = ["Select", "Indian", "Salads", "Turkish", "Thai", "Mexican", "Soup / Noodles", "Bengali", "Italian", "Others - Healthy", "Others - Unhealthy"];
-
-const defaultMeals = {
-  breakfast: { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
-  lunch:     { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false },
-  dinner:    { activeChoice: false, cuisine: "", portion: false, avoidedDessert: false }
-};
-
-const defaultActivity = {
-  cardio: "none",
-  tennis: false,
-  strengthHome: false,
-  strengthGym: false,
-  rehab: false,
-  mobility: false
-};
-
-/* ========================================
-   3. UI Components
+   Toggle Component
    ======================================== */
 const Toggle = ({ value, onChange }) => (
   <button onClick={() => onChange(!value)} className="relative inline-flex items-center">
@@ -58,41 +30,9 @@ const Toggle = ({ value, onChange }) => (
   </button>
 );
 
-const MealCard = ({ label, icon, data, onChange, options }) => (
-  <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-4 text-center">
-      <div className="text-3xl mb-1">{icon}</div>
-      <h3 className="text-lg font-medium text-gray-800">{label}</h3>
-    </div>
-    <div className="p-4 space-y-3">
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-700">Active Choice</span>
-        <Toggle value={data.activeChoice} onChange={v => onChange("activeChoice", v)} />
-      </div>
-      <select
-        value={data.cuisine}
-        onChange={e => onChange("cuisine", e.target.value)}
-        className="w-full px-3 py-2 bg-gray-100 rounded text-sm font-medium text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-300"
-      >
-        {options.map(opt => <option key={opt} value={opt}>{opt || "—"}</option>)}
-      </select>
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-700">Portion Controlled</span>
-        <Toggle value={data.portion} onChange={v => onChange("portion", v)} />
-      </div>
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium text-gray-700">Avoided Dessert</span>
-        <Toggle value={data.avoidedDessert} onChange={v => onChange("avoidedDessert", v)} />
-      </div>
-    </div>
-  </div>
-);
-
 /* ========================================
-   4. Page Components
+   Welcome Page
    ======================================== */
-
-// --- 4.1 WelcomePage (Fixed Streak) ---
 const WelcomePage = ({ logs, setPage }) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -129,40 +69,60 @@ const WelcomePage = ({ logs, setPage }) => {
   );
 };
 
-// --- 4.2 LogPage ---
+/* ========================================
+   Log Page
+   ======================================== */
 const LogPage = ({ logs, setPage, refetchLogs }) => {
-  const [meals, setMeals] = useState(defaultMeals);
-  const [activity, setActivity] = useState(defaultActivity);
-  const [avoidedSnack, setAvoidedSnack] = useState(false);
+  const [usedChatGPT, setUsedChatGPT] = useState(false);
+  const [activity, setActivity] = useState({
+    cardio: "none",
+    tennis: false,
+    strengthHome: false,
+    strengthGym: false,
+    rehab: false,
+    mobility: false
+  });
 
   const today = new Date().toISOString().split("T")[0];
   const todayLog = logs.find(l => l.log_date === today);
 
   useEffect(() => {
     if (todayLog) {
-      setMeals(todayLog.meals || defaultMeals);
-      setActivity(todayLog.activity || defaultActivity);
-      setAvoidedSnack(todayLog.avoidedSnack ?? false);
+      setUsedChatGPT(todayLog.usedChatGPT ?? false);
+      setActivity(todayLog.activity || {
+        cardio: "none",
+        tennis: false,
+        strengthHome: false,
+        strengthGym: false,
+        rehab: false,
+        mobility: false
+      });
     } else {
-      setMeals(defaultMeals);
-      setActivity(defaultActivity);
-      setAvoidedSnack(false);
+      setUsedChatGPT(false);
+      setActivity({
+        cardio: "none",
+        tennis: false,
+        strengthHome: false,
+        strengthGym: false,
+        rehab: false,
+        mobility: false
+      });
     }
   }, [todayLog]);
 
-  const updateMeal = (meal, field, value) => {
-    setMeals(prev => ({...prev, [meal]: {...prev[meal], [field]: value}}));
-  };
-
   const hasData = 
-    Object.values(meals).some(m => m.activeChoice || m.cuisine !== "" || m.portion || m.avoidedDessert) ||
+    usedChatGPT ||
     activity.cardio !== "none" ||
     activity.tennis || activity.strengthHome || activity.strengthGym ||
-    activity.rehab || activity.mobility ||
-    avoidedSnack;
+    activity.rehab || activity.mobility;
 
   const handleSubmit = async () => {
-    const payload = { user_id: "me", log_date: today, meals, activity, avoidedSnack };
+    const payload = { 
+      user_id: "me", 
+      log_date: today, 
+      usedChatGPT,
+      activity
+    };
     const { error } = await supabase.from("daily_logs").upsert(payload, { onConflict: "user_id,log_date" });
     if (error) {
       alert("Error: " + error.message);
@@ -182,34 +142,33 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
         <p className="text-base text-gray-600 mt-1">{dateStr}</p>
       </div>
 
-      <div className="px-5">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Meals</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          <MealCard label="Breakfast" icon="🍳" data={meals.breakfast} onChange={(f,v) => updateMeal("breakfast",f,v)} options={breakfastOptions} />
-          <MealCard label="Lunch" icon="🥗" data={meals.lunch} onChange={(f,v) => updateMeal("lunch",f,v)} options={lunchDinnerOptions} />
-          <MealCard label="Dinner" icon="🍽️" data={meals.dinner} onChange={(f,v) => updateMeal("dinner",f,v)} options={lunchDinnerOptions} />
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm p-4 mb-8">
+      <div className="px-5 max-w-2xl mx-auto">
+        {/* Food Tracking */}
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Food Tracking</h2>
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-8">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <div className="text-3xl">🍿</div>
-              <h3 className="text-base font-medium text-gray-800">Avoided a Snack</h3>
+              <div className="text-3xl">🤖</div>
+              <h3 className="text-base font-medium text-gray-800">Used ChatGPT for Food Tracking</h3>
             </div>
-            <Toggle value={avoidedSnack} onChange={setAvoidedSnack} />
+            <Toggle value={usedChatGPT} onChange={setUsedChatGPT} />
           </div>
         </div>
 
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Activity</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-4xl mx-auto">
+        {/* Fitness Activity */}
+        <h2 className="text-lg font-semibold text-gray-800 mb-4 text-center">Fitness</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">🏃</div>
                 <span className="text-base font-medium">Cardio</span>
               </div>
-              <select value={activity.cardio} onChange={e=>setActivity({...activity,cardio:e.target.value})}
-                className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300">
+              <select 
+                value={activity.cardio} 
+                onChange={e => setActivity({...activity, cardio: e.target.value})}
+                className="px-3 py-1.5 bg-gray-100 rounded text-sm font-medium focus:ring-1 focus:ring-blue-300"
+              >
                 <option value="none">None</option>
                 <option>Run</option>
                 <option>Cycle</option>
@@ -221,47 +180,49 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
                 <div className="text-3xl">🎾</div>
                 <span className="text-base font-medium">Tennis</span>
               </div>
-              <Toggle value={activity.tennis} onChange={v=>setActivity({...activity,tennis:v})} />
+              <Toggle value={activity.tennis} onChange={v => setActivity({...activity, tennis: v})} />
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">🏋️</div>
                 <span className="text-base font-medium">Strength (Home)</span>
               </div>
-              <Toggle value={activity.strengthHome} onChange={v=>setActivity({...activity,strengthHome:v})} />
+              <Toggle value={activity.strengthHome} onChange={v => setActivity({...activity, strengthHome: v})} />
             </div>
+          </div>
+          
+          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">💪</div>
                 <span className="text-base font-medium">Strength (Gym)</span>
               </div>
-              <Toggle value={activity.strengthGym} onChange={v=>setActivity({...activity,strengthGym:v})} />
+              <Toggle value={activity.strengthGym} onChange={v => setActivity({...activity, strengthGym: v})} />
             </div>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm p-4 space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">🩹</div>
                 <span className="text-base font-medium">Rehab</span>
               </div>
-              <Toggle value={activity.rehab} onChange={v=>setActivity({...activity,rehab:v})} />
+              <Toggle value={activity.rehab} onChange={v => setActivity({...activity, rehab: v})} />
             </div>
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="text-3xl">🤸</div>
                 <span className="text-base font-medium">Mobility Routine</span>
               </div>
-              <Toggle value={activity.mobility} onChange={v=>setActivity({...activity,mobility:v})} />
+              <Toggle value={activity.mobility} onChange={v => setActivity({...activity, mobility: v})} />
             </div>
           </div>
         </div>
       </div>
 
       <div className="fixed bottom-4 left-4 right-4">
-        <button disabled={!hasData} onClick={handleSubmit}
-          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-300 text-gray-500"}`}>
+        <button 
+          disabled={!hasData} 
+          onClick={handleSubmit}
+          className={`w-full py-3 rounded-xl font-medium text-base shadow transition ${hasData ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-300 text-gray-500"}`}
+        >
           Complete Day
         </button>
       </div>
@@ -269,11 +230,12 @@ const LogPage = ({ logs, setPage, refetchLogs }) => {
   );
 };
 
-// --- 4.3 Redesigned StatsPage: Split Layout ---
+/* ========================================
+   Stats Page
+   ======================================== */
 const StatsPage = ({ logs, setPage }) => {
   const sortedLogs = [...logs].sort((a, b) => b.log_date.localeCompare(a.log_date));
 
-  // Current streaks
   const calculateStreak = (conditionFn) => {
     let streak = 0;
     for (const log of sortedLogs) {
@@ -288,12 +250,7 @@ const StatsPage = ({ logs, setPage }) => {
     : 0;
 
   const mobilityStreak = calculateStreak(log => log.activity?.mobility === true);
-  const noDessertStreak = calculateStreak(log =>
-    log.meals?.breakfast?.avoidedDessert &&
-    log.meals?.lunch?.avoidedDessert &&
-    log.meals?.dinner?.avoidedDessert
-  );
-  const noSnackStreak = calculateStreak(log => log.avoidedSnack === true);
+  const chatGPTStreak = calculateStreak(log => log.usedChatGPT === true);
 
   // Last 30 days
   const thirtyDaysAgo = new Date();
@@ -303,100 +260,71 @@ const StatsPage = ({ logs, setPage }) => {
   const cardioCount = recentLogs.filter(log => log.activity?.cardio !== "none").length;
   const tennisCount = recentLogs.filter(log => log.activity?.tennis).length;
   const strengthCount = recentLogs.filter(log => log.activity?.strengthHome || log.activity?.strengthGym).length;
-
-  // Top 5 cuisines (across all meals in last 30 days)
-  const cuisineCount = {};
-  recentLogs.forEach(log => {
-    ['breakfast', 'lunch', 'dinner'].forEach(meal => {
-      const c = log.meals?.[meal]?.cuisine || "None";
-      cuisineCount[c] = (cuisineCount[c] || 0) + 1;
-    });
-  });
-
-  const topCuisines = Object.entries(cuisineCount)
-    .sort(([,a], [,b]) => b - a)
-    .slice(0, 5);
+  const rehabCount = recentLogs.filter(log => log.activity?.rehab).length;
+  const mobilityCount = recentLogs.filter(log => log.activity?.mobility).length;
+  const chatGPTCount = recentLogs.filter(log => log.usedChatGPT).length;
 
   return (
     <div className="min-h-screen pb-20">
       <div className="px-5 pt-8 pb-4 text-center">
-        <h1 className="text-3xl font-bold text-gray-900">Consistency Wins</h1>
-        <p className="text-sm text-gray-500 mt-2">Last 30 days' stats</p>
+        <h1 className="text-3xl font-bold text-gray-900">Your Progress</h1>
+        <p className="text-sm text-gray-500 mt-2">Last 30 days</p>
         <button onClick={() => setPage('log')} className="mt-4 text-blue-600 text-base font-medium">← Back to Today</button>
       </div>
 
-      <div className="px-5 grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-        {/* Left Half: Moving more?! */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-              Moving more?! 💪
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-blue-600">{loggingStreak}</div>
-                <p className="text-base text-gray-600 mt-2">Daily Logging 🔥</p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-teal-600">{mobilityStreak}</div>
-                <p className="text-base text-gray-600 mt-2">Mobility Days 🤸</p>
-              </div>
+      <div className="px-5 max-w-4xl mx-auto space-y-8">
+        {/* Streaks */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Current Streaks 🔥</h2>
+          <div className="grid grid-cols-3 gap-6">
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600">{loggingStreak}</div>
+              <p className="text-sm text-gray-600 mt-2">Daily Logging</p>
             </div>
-          </div>
-
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-5">Sessions in last 30 days</h3>
-            <div className="space-y-5">
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🏃 Cardio</span>
-                <span className="text-2xl font-bold text-indigo-600">{cardioCount}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🎾 Tennis</span>
-                <span className="text-2xl font-bold text-green-600">{tennisCount}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-lg font-medium text-gray-700 flex items-center gap-2">💪 Strength</span>
-                <span className="text-2xl font-bold text-purple-600">{strengthCount}</span>
-              </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-teal-600">{mobilityStreak}</div>
+              <p className="text-sm text-gray-600 mt-2">Mobility Days 🤸</p>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-purple-600">{chatGPTStreak}</div>
+              <p className="text-sm text-gray-600 mt-2">ChatGPT Tracking 🤖</p>
             </div>
           </div>
         </div>
 
-        {/* Right Half: Fuelling better? */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-              Fuelling better? 🥗
-            </h2>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-bold text-purple-600">{noDessertStreak}</div>
-                <p className="text-base text-gray-600 mt-2">No Dessert Days 🍰➖</p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl font-bold text-orange-600">{noSnackStreak}</div>
-                <p className="text-base text-gray-600 mt-2">No Snack Days 🍿➖</p>
-              </div>
+        {/* Fitness Stats */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Fitness (Last 30 Days)</h2>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🏃 Cardio</span>
+              <span className="text-2xl font-bold text-indigo-600">{cardioCount}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🎾 Tennis</span>
+              <span className="text-2xl font-bold text-green-600">{tennisCount}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700 flex items-center gap-2">💪 Strength</span>
+              <span className="text-2xl font-bold text-purple-600">{strengthCount}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🩹 Rehab</span>
+              <span className="text-2xl font-bold text-orange-600">{rehabCount}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-medium text-gray-700 flex items-center gap-2">🤸 Mobility</span>
+              <span className="text-2xl font-bold text-teal-600">{mobilityCount}</span>
             </div>
           </div>
+        </div>
 
-          <div className="bg-white rounded-2xl shadow-md p-6">
-            <h3 className="text-xl font-semibold text-gray-800 mb-5">Top 5 Cuisines (last 30 days)</h3>
-            <div className="space-y-4">
-              {topCuisines.length === 0 ? (
-                <p className="text-center text-gray-500 italic">No meals logged yet</p>
-              ) : (
-                topCuisines.map(([cuisine, count]) => (
-                  <div key={cuisine} className="flex justify-between items-center">
-                    <span className="text-lg font-medium text-gray-700">
-                      {cuisine === "" || cuisine === "None" ? "— (Not specified)" : cuisine}
-                    </span>
-                    <span className="text-2xl font-bold text-blue-600">{count}×</span>
-                  </div>
-                ))
-              )}
-            </div>
+        {/* Food Tracking Stats */}
+        <div className="bg-white rounded-2xl shadow-md p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Food Tracking (Last 30 Days)</h2>
+          <div className="text-center">
+            <div className="text-5xl font-bold text-blue-600">{chatGPTCount}</div>
+            <p className="text-lg text-gray-600 mt-3">days using ChatGPT 🤖</p>
           </div>
         </div>
       </div>
@@ -405,7 +333,7 @@ const StatsPage = ({ logs, setPage }) => {
 };
 
 /* ========================================
-   5. Main App
+   Main App
    ======================================== */
 const App = () => {
   const [page, setPage] = useState('welcome');
